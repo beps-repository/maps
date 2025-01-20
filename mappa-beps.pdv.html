@@ -37,31 +37,33 @@
         const response = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vS7QO8J4FXkewV74Gp5tBQp2DnOT8e5-ITUOLDBF7NzlYXCQYjHkGmT4-QN25tqH7EEuCQTBsfkzhse/pub?gid=0&single=true&output=csv");
         const csvText = await response.text();
 
-        // Debug del CSV grezzo
-        console.log("CSV Text:", csvText);
+        console.log("CSV Raw Data:", csvText); // Debug del CSV grezzo
+
+        // Identifica il separatore corretto
+        const separator = csvText.includes(";") ? ";" : ",";
 
         // Converte il CSV in un array di oggetti
         const rows = csvText.split("\n").slice(1); // Salta l'intestazione
         const stores = rows
             .map((row, index) => {
-                const cols = row.split(",");
+                const cols = row.split(separator);
 
                 // Debug per ogni riga
                 console.log(`Row ${index}:`, cols);
 
-                const lat = parseFloat((cols[38]?.trim().replace(/'/g, "") || "0").replace(",", "."));
-                const lng = parseFloat((cols[39]?.trim().replace(/'/g, "") || "0").replace(",", "."));
+                const lat = parseFloat((cols[38]?.trim()?.replace(/'/g, "") || "0").replace(",", "."));
+                const lng = parseFloat((cols[39]?.trim()?.replace(/'/g, "") || "0").replace(",", "."));
 
                 return {
                     name: cols[5]?.trim() || `Sconosciuto (Riga ${index + 2})`, // Colonna "F"
                     lat: lat,
                     lng: lng,
                     link: cols[33]?.trim() || "#", // Colonna "AH"
-                    include: cols[40]?.trim().toLowerCase() === "si" // Colonna "AO"
+                    include: cols[40]?.trim()?.toLowerCase() === "si" // Colonna "AO"
                 };
             })
             .filter(store => {
-                const isValid = store.include && store.lat !== 0 && store.lng !== 0;
+                const isValid = store.include && !isNaN(store.lat) && !isNaN(store.lng);
                 if (!isValid) {
                     console.warn("Dati non validi:", store);
                 }
