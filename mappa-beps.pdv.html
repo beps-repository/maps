@@ -42,8 +42,8 @@
         const stores = rows
             .map(row => {
                 const cols = row.split(",");
-                const lat = parseFloat((cols[38]?.trim().replace(/'/g, "") || "0").replace(",", "."));
-                const lng = parseFloat((cols[39]?.trim().replace(/'/g, "") || "0").replace(",", "."));
+                const lat = parseFloat((cols[38]?.trim().replace(/'/g, "") || "0"));
+                const lng = parseFloat((cols[39]?.trim().replace(/'/g, "") || "0"));
                 return {
                     name: cols[5]?.trim() || "Sconosciuto", // Colonna "F"
                     lat: lat,
