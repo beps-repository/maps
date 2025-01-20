@@ -42,10 +42,10 @@
         return rows
             .map(row => {
                 const cols = row.split(",");
-
-                // Correggi il formato delle coordinate sostituendo le virgole con punti
-                const lat = parseFloat(cols[38]?.trim().replace(",", ".") || 0); // Colonna "AM"
-                const lng = parseFloat(cols[39]?.trim().replace(",", ".") || 0); // Colonna "AN"
+                
+                // Sostituisce la virgola con il punto nelle coordinate
+                const lat = parseFloat((cols[38]?.trim() || "0").replace(",", "."));
+                const lng = parseFloat((cols[39]?.trim() || "0").replace(",", "."));
 
                 return {
                     name: cols[5]?.trim() || "Sconosciuto", // Colonna "F"
@@ -107,6 +107,7 @@
 
     loadMarkers();
 </script>
+
 
 </body>
 </html>
