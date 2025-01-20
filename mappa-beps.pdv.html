@@ -43,14 +43,14 @@
                 .map(row => {
                     const cols = row.split(",");
                     return {
-                        name: cols[5].trim(), // Colonna "F"
-                        lat: parseFloat(cols[38].trim()), // Colonna "AM"
-                        lng: parseFloat(cols[39].trim()), // Colonna "AN"
-                        link: cols[33].trim(), // Colonna "AH"
-                        include: cols[40].trim().toLowerCase() === "si" // Colonna "AO"
+                        name: cols[5]?.trim() || "Sconosciuto", // Colonna "F"
+                        lat: parseFloat(cols[38]?.trim() || 0), // Colonna "AM"
+                        lng: parseFloat(cols[39]?.trim() || 0), // Colonna "AN"
+                        link: cols[33]?.trim() || "#", // Colonna "AH"
+                        include: cols[40]?.trim().toLowerCase() === "si" // Colonna "AO"
                     };
                 })
-                .filter(store => store.include); // Filtra solo i negozi con "si"
+                .filter(store => store.include && store.lat && store.lng); // Filtra solo negozi validi
         }
 
         // Inizializza la mappa
@@ -91,8 +91,13 @@
             map.addLayer(markers);
 
             // Calcola il bounding box per centrare la mappa
-            const group = L.featureGroup(markerArray);
-            map.fitBounds(group.getBounds());
+            if (markerArray.length > 0) {
+                const group = L.featureGroup(markerArray);
+                map.fitBounds(group.getBounds());
+            } else {
+                console.warn("Nessun marker valido trovato. La mappa utilizzerà un centro e uno zoom di default.");
+                map.setView([45.4642, 9.1900], 6); // Centro e zoom di default
+            }
         }
 
         loadMarkers();
