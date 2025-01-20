@@ -27,13 +27,17 @@
             width: 40px;
             height: 40px;
         }
+        .custom-marker {
+                font-weight: 600;
+                font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <script>
         // Inizializza la mappa
-        const map = L.map('map').setView([45.4642, 9.1900], 8);
+        const map = L.map('map');
 
         // Aggiungi un livello base (OpenStreetMap)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -94,6 +98,7 @@
         });
 
         // Aggiungi i marker al cluster
+        const markerArray = [];
         stores.forEach(store => {
             const customIcon = L.icon({
                 iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
@@ -104,10 +109,15 @@
             const marker = L.marker([store.lat, store.lng], { icon: customIcon })
                 .bindPopup(`<b>${store.name}</b><br><a href="${store.link}" target="_blank">Scopri di più</a>`);
             markers.addLayer(marker);
+            markerArray.push(marker);
         });
 
         // Aggiungi i cluster alla mappa
         map.addLayer(markers);
+
+        // Calcola il bounding box per centrare la mappa
+        const group = L.featureGroup(markerArray);
+        map.fitBounds(group.getBounds());
     </script>
 </body>
 </html>
