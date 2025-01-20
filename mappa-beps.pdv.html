@@ -51,8 +51,8 @@
                 // Debug per ogni riga
                 console.log(`Row ${index}:`, cols);
 
-                const lat = parseFloat((cols[38]?.trim()?.replace(/'/g, "") || "0").replace(",", "."));
-                const lng = parseFloat((cols[39]?.trim()?.replace(/'/g, "") || "0").replace(",", "."));
+                const lat = cols[38]?.trim() || "0";
+                const lng = cols[39]?.trim() || "0";
 
                 return {
                     name: cols[5]?.trim() || `Sconosciuto (Riga ${index + 2})`, // Colonna "F"
