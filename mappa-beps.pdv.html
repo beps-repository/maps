@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.js"></script>
     <style>
         #map {
             width: 100%;
@@ -34,29 +34,30 @@
 <body>
     <div id="map"></div>
     <script>
+        // Funzione per tracciare eventi GA4
         function trackGA4Click(store, region) {
-    const sendEvent = () => {
-        window.dataLayer.push({
-            event: "store_locator",
-            category: "store_select",
-            action: region,
-            label: store
-        });
-        console.log("Evento GA4 inviato:", { store, region });
-    };
+            const sendEvent = () => {
+                window.dataLayer.push({
+                    event: "store_locator",
+                    category: "store_select",
+                    action: region,
+                    label: store
+                });
+                console.log("Evento GA4 inviato:", { store, region });
+            };
 
-    if (typeof window.dataLayer !== "undefined") {
-        sendEvent(); // Esegui subito se dataLayer è disponibile
-    } else {
-        // Attendi fino a quando dataLayer non diventa disponibile
-        const interval = setInterval(() => {
             if (typeof window.dataLayer !== "undefined") {
-                sendEvent();
-                clearInterval(interval); // Interrompi il controllo
+                sendEvent(); // Esegui subito se dataLayer è disponibile
+            } else {
+                // Attendi fino a quando dataLayer non diventa disponibile
+                const interval = setInterval(() => {
+                    if (typeof window.dataLayer !== "undefined") {
+                        sendEvent();
+                        clearInterval(interval); // Interrompi il controllo
+                    }
+                }, 100); // Controlla ogni 100 ms
             }
-        }, 100); // Controlla ogni 100 ms
-    }
-}
+        }
 
         // Funzione per parsare CSV con gestione delle virgole nei campi
         function parseCSV(csvText) {
@@ -88,17 +89,14 @@
 
             return rows
                 .slice(1) // Salta l'intestazione
-                .map((cols, index) => {
-                    console.log(`Row ${index + 1}:`, cols);
-                    return {
-                        name: cols[5]?.trim() || "Sconosciuto", // Colonna "F"
-                        region: cols[42]?.trim() || "Sconosciuto", // Colonna "H"
-                        lat: parseFloat((cols[38]?.trim() || "0").replace("'", "")), // Colonna "AM"
-                        lng: parseFloat((cols[39]?.trim() || "0").replace("'", "")), // Colonna "AN"
-                        link: cols[41]?.trim() || "#", // Colonna "AP"
-                        include: cols[40]?.trim() === "1" // Colonna "AO" (1 per pubblicare, 0 per non pubblicare)
-                    };
-                })
+                .map((cols) => ({
+                    name: cols[5]?.trim() || "Sconosciuto", // Colonna "F"
+                    region: cols[42]?.trim() || "Sconosciuto", // Colonna "AQ"
+                    lat: parseFloat(cols[38]?.trim() || "0"), // Colonna "AM"
+                    lng: parseFloat(cols[39]?.trim() || "0"), // Colonna "AN"
+                    link: cols[41]?.trim() || "#", // Colonna "AP"
+                    include: cols[40]?.trim() === "1" // Colonna "AO" (1 per pubblicare, 0 per non pubblicare)
+                }))
                 .filter(store => {
                     const isValid = store.include && !isNaN(store.lat) && !isNaN(store.lng);
                     if (!isValid) {
@@ -130,28 +128,30 @@
                     });
                 }
             });
-            const customIcon = L.icon({
-    iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40]
-});
 
+            const customIcon = L.icon({
+                iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40]
+            });
 
             const markerArray = [];
             stores.forEach(store => {
-    const sanitizedStoreName = store.name.replace(/'/g, "\\'"); // Escapa gli apostrofi
-const sanitizedRegion = store.region.replace(/'/g, "\\'"); // Escapa gli apostrofi
+                const sanitizedStoreName = store.name.replace(/'/g, "\\'");
+                const sanitizedRegion = store.region.replace(/'/g, "\\'");
 
-const marker = L.marker([store.lat, store.lng], { icon: customIcon })
-    .bindPopup(
-        `<b>${store.name}</b><br>Regione: ${store.region}<br>` +
-        `<a href="${store.link}" target="_blank" onclick="trackGA4Click('${sanitizedStoreName}', '${sanitizedRegion}')">Scopri di più</a>`
-    )
-    .on('click', () => trackGA4Click(store.name, store.region));
-markers.addLayer(marker);
+                const marker = L.marker([store.lat, store.lng], { icon: customIcon })
+                    .bindPopup(
+                        `<b>${store.name}</b><br>Regione: ${store.region}<br>` +
+                        `<a href="${store.link}" target="_blank" onclick="trackGA4Click('${sanitizedStoreName}', '${sanitizedRegion}')">Scopri di più</a>`
+                    )
+                    .on('click', () => trackGA4Click(store.name, store.region));
+                markers.addLayer(marker);
+                markerArray.push(marker);
+            });
 
-
+            map.addLayer(markers);
 
             // Calcola il bounding box per centrare la mappa
             if (markerArray.length > 0) {
