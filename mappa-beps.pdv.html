@@ -130,20 +130,27 @@
                     });
                 }
             });
+            const customIcon = L.icon({
+    iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40]
+});
+
 
             const markerArray = [];
             stores.forEach(store => {
     const sanitizedStoreName = store.name.replace(/'/g, "\\'"); // Escapa gli apostrofi
-    const sanitizedRegion = store.region.replace(/'/g, "\\'"); // Escapa gli apostrofi
+const sanitizedRegion = store.region.replace(/'/g, "\\'"); // Escapa gli apostrofi
 
-    const marker = L.marker([store.lat, store.lng], { icon: customIcon })
-        .bindPopup(
-            `<b>${store.name}</b><br>Regione: ${store.region}<br>` +
-            `<a href="${store.link}" target="_blank" onclick="trackGA4Click('${sanitizedStoreName}', '${sanitizedRegion}')">Scopri di più</a>`
-        )
-        .on('click', () => trackGA4Click(store.name, store.region));
-    markers.addLayer(marker);
-});
+const marker = L.marker([store.lat, store.lng], { icon: customIcon })
+    .bindPopup(
+        `<b>${store.name}</b><br>Regione: ${store.region}<br>` +
+        `<a href="${store.link}" target="_blank" onclick="trackGA4Click('${sanitizedStoreName}', '${sanitizedRegion}')">Scopri di più</a>`
+    )
+    .on('click', () => trackGA4Click(store.name, store.region));
+markers.addLayer(marker);
+
 
 
             // Calcola il bounding box per centrare la mappa
