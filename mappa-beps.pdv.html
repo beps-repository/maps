@@ -37,13 +37,16 @@
         // Funzione per tracciare gli eventi GA4
         function trackGA4Click(store, region) {
             if (typeof dataLayer !== "undefined") {
-                window.dataLayer.push({
-                    event: "store_locator",
-                    category: "store_select",
-                    action: region,
-                    label: store
-                });
-            }
+    console.log("dataLayer esiste:", dataLayer);
+    window.dataLayer.push({
+        event: "store_locator",
+        category: "store_select",
+        action: region,
+        label: store
+    });
+} else {
+    console.error("dataLayer non è definito!");
+}
         }
 
         // Funzione per parsare CSV con gestione delle virgole nei campi
@@ -128,8 +131,9 @@
                     popupAnchor: [0, -40]
                 });
                 const marker = L.marker([store.lat, store.lng], { icon: customIcon })
-                    .bindPopup(`<b>${store.name}</b><br>Regione: ${store.region}<br><a href="${store.link}" target="_blank">Scopri di più</a>`)
-                    .on('click', () => trackGA4Click(store.name, store.region));
+                   .bindPopup(`<b>${store.name}</b><br>Regione: ${store.region}<br><a href="${store.link}" target="_blank" onclick="trackGA4Click('${store.name}', '${store.region}')">Scopri di più</a>`);
+                    .on('click', () => {    console.log(`Marker cliccato: Store=${store.name}, Regione=${store.region}`);    trackGA4Click(store.name, store.region);});
+
                 markers.addLayer(marker);
                 markerArray.push(marker);
             });
