@@ -83,8 +83,8 @@
                         lat: parseFloat((cols[38]?.trim() || "0").replace("'", "")), // Colonna "AM"
                         lng: parseFloat((cols[39]?.trim() || "0").replace("'", "")), // Colonna "AN"
                         link: cols[41]?.trim() || "#", // Colonna "AP"
-                        include: cols[40]?.trim() === "1" // Colonna "AO" (1 per pubblicare, 0 per non pubblicare)
-                        region: cols[42]?.trim() || "Sconosciuto", // Colonna "AQ"
+                        include: cols[40]?.trim() === "1", // Colonna "AO" (1 per pubblicare, 0 per non pubblicare)
+                        region: cols[42]?.trim() || "Sconosciuto" // Colonna "AQ"
                     };
                 })
                 .filter(store => {
