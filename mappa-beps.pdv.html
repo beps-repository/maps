@@ -34,20 +34,29 @@
 <body>
     <div id="map"></div>
     <script>
-        // Funzione per tracciare gli eventi GA4
         function trackGA4Click(store, region) {
-            if (typeof dataLayer !== "undefined") {
-    console.log("dataLayer esiste:", dataLayer);
-    window.dataLayer.push({
-        event: "store_locator",
-        category: "store_select",
-        action: region,
-        label: store
-    });
-} else {
-    console.error("dataLayer non è definito!");
+    const sendEvent = () => {
+        window.dataLayer.push({
+            event: "store_locator",
+            category: "store_select",
+            action: region,
+            label: store
+        });
+        console.log("Evento GA4 inviato:", { store, region });
+    };
+
+    if (typeof window.dataLayer !== "undefined") {
+        sendEvent(); // Esegui subito se dataLayer è disponibile
+    } else {
+        // Attendi fino a quando dataLayer non diventa disponibile
+        const interval = setInterval(() => {
+            if (typeof window.dataLayer !== "undefined") {
+                sendEvent();
+                clearInterval(interval); // Interrompi il controllo
+            }
+        }, 100); // Controlla ogni 100 ms
+    }
 }
-        }
 
         // Funzione per parsare CSV con gestione delle virgole nei campi
         function parseCSV(csvText) {
