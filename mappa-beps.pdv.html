@@ -15,24 +15,17 @@
             height: 600px;
         }
         .custom-cluster {
-            background: rgba(0, 123, 255, 0.8);
+            background: #e10b17;
             color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+            width: 45px;
+            height: 45px;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-        .custom-marker {
-            background: rgba(255, 99, 71, 0.8);
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .custom-marker img {
+            width: 40px;
+            height: 40px;
         }
     </style>
 </head>
@@ -50,29 +43,29 @@
 
         // Dati dei negozi
         const stores = [
-            { name: "Verona", lat: 45.407203, lng: 10.964957, link: "/negozi/verona" },
-            { name: "Treviso - Montebelluna", lat: 45.778894, lng: 12.060182, link: "/negozi/treviso" },
-            { name: "Pordenone - Fiume Veneto", lat: 45.94545, lng: 12.717415, link: "/negozi/pordenone" },
-            { name: "Gorizia", lat: 45.92938, lng: 13.624, link: "/negozi/gorizia" },
-            { name: "Trieste", lat: 45.619379, lng: 13.811839, link: "/negozi/trieste" },
-            { name: "Udine - Tavagnacco", lat: 46.110939, lng: 13.227786, link: "/negozi/udine" },
-            { name: "Brescia - San Zeno sul Naviglio", lat: 45.496263, lng: 10.218256, link: "/negozi/brescia" },
-            { name: "Brescia - Rovato", lat: 45.5775316, lng: 10.0093619, link: "/negozi/brescia-rovato" },
-            { name: "Padova", lat: 45.413944, lng: 11.919801, link: "/negozi/padova" },
-            { name: "Venezia - Marcon", lat: 45.547356, lng: 12.310867, link: "/negozi/venezia" },
-            { name: "Venezia - San Dona di Piave", lat: 45.63907, lng: 12.59397, link: "/negozi/sandona" },
-            { name: "Bergamo", lat: 45.668885, lng: 9.638014, link: "/negozi/bergamo" },
-            { name: "Vicenza", lat: 45.529185, lng: 11.498584, link: "/negozi/vicenza" },
-            { name: "Bologna", lat: 44.5198454, lng: 11.3617676, link: "/negozi/bologna" },
-            { name: "Reggio Emilia", lat: 44.7112067, lng: 10.6172083, link: "/negozi/reggio-emilia" },
-            { name: "Como", lat: 45.7632796, lng: 9.0558871, link: "/negozi/como" },
-            { name: "Torino - Chivasso", lat: 45.20136, lng: 7.893376, link: "/negozi/chivasso" },
-            { name: "Cremona", lat: 45.1340326, lng: 10.0380331, link: "/negozi/cremona" },
-            { name: "Verona - Castelnuovo del Garda", lat: 45.4377419, lng: 10.7527042, link: "/negozi/castelnuovo-del-garda" },
-            { name: "Milano - Rozzano", lat: 45.380344, lng: 9.1687192, link: "/negozi/rozzano" },
-            { name: "Sondrio - Castione Andevenno", lat: 46.162859, lng: 9.811668, link: "/negozi/sondrio" },
-            { name: "Treviso - San Fior", lat: 45.9053281, lng: 12.3362322, link: "/negozi/san-fior-treviso" },
-            { name: "Milano - Baranzate", lat: 45.533447, lng: 9.107669, link: "/negozi/baranzate-milano" }
+            { name: "Bep's Verona", lat: 45.407203, lng: 10.964957, link: "https://www.beps.it/it/negozi/verona" },
+            { name: "Bep's Treviso - Montebelluna", lat: 45.778894, lng: 12.060182, link: "https://www.beps.it/it/negozi/treviso" },
+            { name: "Bep's Pordenone - Fiume Veneto", lat: 45.94545, lng: 12.717415, link: "https://www.beps.it/it/negozi/pordenone" },
+            { name: "Bep's Gorizia", lat: 45.92938, lng: 13.624, link: "https://www.beps.it/it/negozi/gorizia" },
+            { name: "Bep's Trieste", lat: 45.619379, lng: 13.811839, link: "https://www.beps.it/it/negozi/trieste" },
+            { name: "Bep's Udine - Tavagnacco", lat: 46.110939, lng: 13.227786, link: "https://www.beps.it/it/negozi/udine" },
+            { name: "Bep's Brescia - San Zeno sul Naviglio", lat: 45.496263, lng: 10.218256, link: "https://www.beps.it/it/negozi/brescia" },
+            { name: "Bep's Brescia - Rovato", lat: 45.5775316, lng: 10.0093619, link: "https://www.beps.it/it/negozi/brescia-rovato" },
+            { name: "Bep's Padova", lat: 45.413944, lng: 11.919801, link: "https://www.beps.it/it/negozi/padova" },
+            { name: "Bep's Venezia - Marcon", lat: 45.547356, lng: 12.310867, link: "https://www.beps.it/it/negozi/venezia" },
+            { name: "Bep's Venezia - San Dona di Piave", lat: 45.63907, lng: 12.59397, link: "https://www.beps.it/it/negozi/sandona" },
+            { name: "Bep's Bergamo", lat: 45.668885, lng: 9.638014, link: "https://www.beps.it/it/negozi/bergamo" },
+            { name: "Bep's Vicenza", lat: 45.529185, lng: 11.498584, link: "https://www.beps.it/it/negozi/vicenza" },
+            { name: "Bep's Bologna", lat: 44.5198454, lng: 11.3617676, link: "https://www.beps.it/it/negozi/bologna" },
+            { name: "Bep's Reggio Emilia", lat: 44.7112067, lng: 10.6172083, link: "https://www.beps.it/it/negozi/reggio-emilia" },
+            { name: "Bep's Como", lat: 45.7632796, lng: 9.0558871, link: "https://www.beps.it/it/negozi/como" },
+            { name: "Bep's Torino - Chivasso", lat: 45.20136, lng: 7.893376, link: "https://www.beps.it/it/negozi/chivasso" },
+            { name: "Bep's Cremona", lat: 45.1340326, lng: 10.0380331, link: "https://www.beps.it/it/negozi/cremona" },
+            { name: "Bep's Verona - Castelnuovo del Garda", lat: 45.4377419, lng: 10.7527042, link: "https://www.beps.it/it/negozi/castelnuovo-del-garda" },
+            { name: "Bep's Milano - Rozzano", lat: 45.380344, lng: 9.1687192, link: "https://www.beps.it/it/negozi/rozzano" },
+            { name: "Bep's Sondrio - Castione Andevenno", lat: 46.162859, lng: 9.811668, link: "https://www.beps.it/it/negozi/sondrio" },
+            { name: "Bep's Treviso - San Fior", lat: 45.9053281, lng: 12.3362322, link: "https://www.beps.it/it/negozi/san-fior-treviso" },
+            { name: "Bep's Milano - Baranzate", lat: 45.533447, lng: 9.107669, link: "https://www.beps.it/it/negozi/baranzate-milano" }
         ];
 
         // Crea un gruppo di cluster
@@ -82,17 +75,18 @@
                 return L.divIcon({
                     html: `<div class='custom-cluster'>${count}</div>`,
                     className: 'custom-cluster',
-                    iconSize: [40, 40]
+                    iconSize: [45, 45]
                 });
             }
         });
 
         // Aggiungi i marker al cluster
         stores.forEach(store => {
-            const customIcon = L.divIcon({
-                html: `<div class='custom-marker'>📍</div>`,
-                className: 'custom-marker',
-                iconSize: [30, 30]
+            const customIcon = L.icon({
+                iconUrl: window.location.origin + '/pub/media/beps/Logo_48x48.png',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40]
             });
             const marker = L.marker([store.lat, store.lng], { icon: customIcon })
                 .bindPopup(`<b>${store.name}</b><br><a href="${store.link}" target="_blank">Scopri di più</a>`);
