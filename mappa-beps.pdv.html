@@ -65,7 +65,20 @@
             { name: "Bep's Milano - Rozzano", lat: 45.380344, lng: 9.1687192, link: "https://www.beps.it/it/negozi/rozzano" },
             { name: "Bep's Sondrio - Castione Andevenno", lat: 46.162859, lng: 9.811668, link: "https://www.beps.it/it/negozi/sondrio" },
             { name: "Bep's Treviso - San Fior", lat: 45.9053281, lng: 12.3362322, link: "https://www.beps.it/it/negozi/san-fior-treviso" },
-            { name: "Bep's Milano - Baranzate", lat: 45.533447, lng: 9.107669, link: "https://www.beps.it/it/negozi/baranzate-milano" }
+            { name: "Bep's Milano - Baranzate", lat: 45.533447, lng: 9.107669, link: "https://www.beps.it/it/negozi/baranzate-milano" },
+            { name: "Bep's Alessandria", lat: 44.909236, lng: 8.63542, link: "https://www.beps.it/it/negozi/alessandria" },
+            { name: "Bep's Modena", lat: 44.65464, lng: 10.874113, link: "https://www.beps.it/it/negozi/modena" },
+            { name: "Bep's Imola", lat: 44.374905, lng: 11.733159, link: "https://www.beps.it/it/negozi/imola" },
+            { name: "Bep's Cerro Maggiore", lat: 45.610434, lng: 8.938561, link: "https://www.beps.it/it/negozi/cerro-maggiore" },
+            { name: "Bep's Castelletto Ticino", lat: 45.719472, lng: 8.617704, link: "https://www.beps.it/it/negozi/castelletto-ticino" },
+            { name: "Bep's Piacenza", lat: 45.055101, lng: 9.656159, link: "https://www.beps.it/it/negozi/piacenza" },
+            { name: "Bep's Lissone", lat: 45.599147, lng: 9.233215, link: "https://www.beps.it/it/negozi/lissone" },
+            { name: "Bep's Perugia - Corciano", lat: 43.1017827, lng: 12.3033294, link: "https://www.beps.it/it/negozi/perugia-corciano" },
+            { name: "Bep's Ferrara", lat: 44.8076961, lng: 11.5879544, link: "https://www.beps.it/it/negozi/ferrara" },
+            { name: "Bep's Forli", lat: 44.2472468, lng: 12.0889976, link: "https://www.beps.it/it/negozi/forli" },
+            { name: "Bep's Ancona", lat: 43.561708, lng: 13.5117859, link: "https://www.beps.it/it/negozi/ancona" },
+            { name: "Bep's Trento", lat: 46.0846416, lng: 11.1196371, link: "https://www.beps.it/it/negozi/trento" },
+            { name: "Bep's Milano - Corsico", lat: 45.4293597, lng: 9.0785739, link: "https://www.beps.it/it/negozi/milano-corsico" }
         ];
 
         // Crea un gruppo di cluster
@@ -83,7 +96,7 @@
         // Aggiungi i marker al cluster
         stores.forEach(store => {
             const customIcon = L.icon({
-                iconUrl: window.location.origin + '/pub/media/beps/Logo_48x48.png',
+                iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
                 iconSize: [40, 40],
                 iconAnchor: [20, 40],
                 popupAnchor: [0, -40]
