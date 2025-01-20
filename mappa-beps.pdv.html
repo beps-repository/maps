@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+       <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
         #map {
             width: 100%;
@@ -31,30 +32,27 @@
 </head>
 <body>
     <div id="map"></div>
-   <script>
+
+<script>
     // Funzione per caricare dati da Google Sheets in formato CSV
     async function fetchStoreData() {
         const response = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vS7QO8J4FXkewV74Gp5tBQp2DnOT8e5-ITUOLDBF7NzlYXCQYjHkGmT4-QN25tqH7EEuCQTBsfkzhse/pub?gid=0&single=true&output=csv");
         const csvText = await response.text();
 
-        // Converte il CSV in un array di oggetti
-        const rows = csvText.split("\n").slice(1); // Salta l'intestazione
-        return rows
-            .map(row => {
-                const cols = row.split(",");
-                
-                // Sostituisce la virgola con il punto nelle coordinate
-                const lat = parseFloat((cols[38]?.trim() || "0").replace(",", "."));
-                const lng = parseFloat((cols[39]?.trim() || "0").replace(",", "."));
+        // Utilizza PapaParse per analizzare il CSV
+        const parsedData = Papa.parse(csvText, {
+            header: true, // Usa l'intestazione per mappare i campi
+            skipEmptyLines: true // Ignora le righe vuote
+        });
 
-                return {
-                    name: cols[5]?.trim() || "Sconosciuto", // Colonna "F"
-                    lat: lat,
-                    lng: lng,
-                    link: cols[33]?.trim() || "#", // Colonna "AH"
-                    include: cols[40]?.trim().toLowerCase() === "si" // Colonna "AO"
-                };
-            })
+        return parsedData.data
+            .map(row => ({
+                name: row["F"]?.trim() || "Sconosciuto", // Nome negozio
+                lat: parseFloat(row["AM"]?.replace(",", ".") || 0), // Latitudine
+                lng: parseFloat(row["AN"]?.replace(",", ".") || 0), // Longitudine
+                link: row["AH"]?.trim() || "#", // Link
+                include: row["AO"]?.trim().toLowerCase() === "si" // Pubblicato su
+            }))
             .filter(store => store.include && store.lat && store.lng); // Filtra solo negozi validi
     }
 
