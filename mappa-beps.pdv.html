@@ -1,60 +1,41 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Mappa con Cluster</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-    <style>
-        #map {
-            width: 100%;
-            height: 600px;
-        }
-        .custom-cluster {
-            background: #e10b17;
-            color: white;
-            width: 45px;
-            height: 45px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .custom-marker img {
-            width: 40px;
-            height: 40px;
-        }
-    </style>
-</head>
-<body>
-    <div id="map"></div>
-   <script>
+<script>
     // Funzione per caricare dati da Google Sheets in formato CSV
     async function fetchStoreData() {
         const response = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vS7QO8J4FXkewV74Gp5tBQp2DnOT8e5-ITUOLDBF7NzlYXCQYjHkGmT4-QN25tqH7EEuCQTBsfkzhse/pub?gid=0&single=true&output=csv");
         const csvText = await response.text();
 
+        // Debug del CSV grezzo
+        console.log("CSV Text:", csvText);
+
         // Converte il CSV in un array di oggetti
         const rows = csvText.split("\n").slice(1); // Salta l'intestazione
         const stores = rows
-            .map(row => {
+            .map((row, index) => {
                 const cols = row.split(",");
-                const lat = parseFloat((cols[38]?.trim().replace(/'/g, "") || "0"));
-                const lng = parseFloat((cols[39]?.trim().replace(/'/g, "") || "0"));
+
+                // Debug per ogni riga
+                console.log(`Row ${index}:`, cols);
+
+                const lat = parseFloat((cols[38]?.trim().replace(/'/g, "") || "0").replace(",", "."));
+                const lng = parseFloat((cols[39]?.trim().replace(/'/g, "") || "0").replace(",", "."));
+
                 return {
-                    name: cols[5]?.trim() || "Sconosciuto", // Colonna "F"
+                    name: cols[5]?.trim() || `Sconosciuto (Riga ${index + 2})`, // Colonna "F"
                     lat: lat,
                     lng: lng,
                     link: cols[33]?.trim() || "#", // Colonna "AH"
                     include: cols[40]?.trim().toLowerCase() === "si" // Colonna "AO"
                 };
             })
-            .filter(store => store.include && store.lat && store.lng); // Filtra solo negozi validi
+            .filter(store => {
+                const isValid = store.include && store.lat !== 0 && store.lng !== 0;
+                if (!isValid) {
+                    console.warn("Dati non validi:", store);
+                }
+                return isValid;
+            }); // Filtra solo negozi validi
 
-        console.log("Negozi caricati:", stores); // Debug
+        console.log("Negozi caricati:", stores); // Debug finale
         return stores;
     }
 
@@ -107,6 +88,3 @@
 
     loadMarkers();
 </script>
-
-</body>
-</html>
