@@ -22,6 +22,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            font-size: 0.9rem;
+            font-weight: 600;
         }
         .custom-marker img {
             width: 40px;
@@ -68,7 +70,7 @@
                         name: cols[5]?.trim() || "Sconosciuto", // Colonna "F"
                         lat: parseFloat((cols[38]?.trim() || "0").replace("'", "")), // Colonna "AM"
                         lng: parseFloat((cols[39]?.trim() || "0").replace("'", "")), // Colonna "AN"
-                        link: cols[33]?.trim() || "#", // Colonna "AH"
+                        link: cols[41]?.trim() || "#", // Colonna "AP"
                         include: cols[40]?.trim() === "1" // Colonna "AO" (1 per pubblicare, 0 per non pubblicare)
                     };
                 })
