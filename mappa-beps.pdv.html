@@ -131,7 +131,7 @@
                     popupAnchor: [0, -40]
                 });
                 const marker = L.marker([store.lat, store.lng], { icon: customIcon })
-                   .bindPopup(`<b>${store.name}</b><br>Regione: ${store.region}<br><a href="${store.link}" target="_blank" onclick="trackGA4Click('${store.name}', '${store.region}')">Scopri di più</a>`);
+                   .bindPopup(`<b>${store.name}</b><br>Regione: ${store.region}<br><a href="${store.link}" target="_blank" onclick="trackGA4Click('${store.name}', '${store.region}')">Scopri di più</a>`)
                     .on('click', () => {    console.log(`Marker cliccato: Store=${store.name}, Regione=${store.region}`);    trackGA4Click(store.name, store.region);});
 
                 markers.addLayer(marker);
