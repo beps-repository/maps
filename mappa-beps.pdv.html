@@ -51,15 +51,15 @@
                 // Debug per ogni riga
                 console.log(`Row ${index}:`, cols);
 
-                const lat = cols[38]?.trim() || "0";
-                const lng = cols[39]?.trim() || "0";
+                const lat = cols[39]?.trim() || "0";
+                const lng = cols[40]?.trim() || "0";
 
                 return {
                     name: cols[5]?.trim() || `Sconosciuto (Riga ${index + 2})`, // Colonna "F"
                     lat: lat,
                     lng: lng,
                     link: cols[33]?.trim() || "#", // Colonna "AH"
-                    include: cols[40]?.trim()?.toLowerCase() === "si" // Colonna "AO"
+                    include: cols[40]?.trim()?.toLowerCase() === "1" // Colonna "AO"
                 };
             })
             .filter(store => {
