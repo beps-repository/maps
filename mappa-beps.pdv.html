@@ -27,97 +27,70 @@
             width: 40px;
             height: 40px;
         }
-        .custom-cluster {
-                font-weight: 600;
-                font-size: 14px;
-        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <script>
+        // Funzione per caricare dati da Google Sheets
+        async function fetchStoreData() {
+            const response = await fetch("https://spreadsheets.google.com/feeds/list/1RQxEK4agpUueN2JY1von9cxE-81OBxvT6CA8QO4rcbQ/1/public/values?alt=json");
+            const data = await response.json();
+
+            // Estrai i dati dai campi di Google Sheets
+            return data.feed.entry
+                .filter(entry => entry.gsx$ao.$t.toLowerCase() === "si") // Filtro per "si" nella colonna AO
+                .map(entry => ({
+                    name: entry.gsx$f.$t,
+                    lat: parseFloat(entry.gsx$am.$t),
+                    lng: parseFloat(entry.gsx$an.$t),
+                    link: entry.gsx$ah.$t
+                }));
+        }
+
         // Inizializza la mappa
         const map = L.map('map');
-
-        // Aggiungi un livello base (OpenStreetMap)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Dati dei negozi
-        const stores = [
-            { name: "Bep's Verona", lat: 45.407203, lng: 10.964957, link: "https://www.beps.it/it/negozi/verona" },
-            { name: "Bep's Treviso - Montebelluna", lat: 45.778894, lng: 12.060182, link: "https://www.beps.it/it/negozi/treviso" },
-            { name: "Bep's Pordenone - Fiume Veneto", lat: 45.94545, lng: 12.717415, link: "https://www.beps.it/it/negozi/pordenone" },
-            { name: "Bep's Gorizia", lat: 45.92938, lng: 13.624, link: "https://www.beps.it/it/negozi/gorizia" },
-            { name: "Bep's Trieste", lat: 45.619379, lng: 13.811839, link: "https://www.beps.it/it/negozi/trieste" },
-            { name: "Bep's Udine - Tavagnacco", lat: 46.110939, lng: 13.227786, link: "https://www.beps.it/it/negozi/udine" },
-            { name: "Bep's Brescia - San Zeno sul Naviglio", lat: 45.496263, lng: 10.218256, link: "https://www.beps.it/it/negozi/brescia" },
-            { name: "Bep's Brescia - Rovato", lat: 45.5775316, lng: 10.0093619, link: "https://www.beps.it/it/negozi/brescia-rovato" },
-            { name: "Bep's Padova", lat: 45.413944, lng: 11.919801, link: "https://www.beps.it/it/negozi/padova" },
-            { name: "Bep's Venezia - Marcon", lat: 45.547356, lng: 12.310867, link: "https://www.beps.it/it/negozi/venezia" },
-            { name: "Bep's Venezia - San Dona di Piave", lat: 45.63907, lng: 12.59397, link: "https://www.beps.it/it/negozi/sandona" },
-            { name: "Bep's Bergamo", lat: 45.668885, lng: 9.638014, link: "https://www.beps.it/it/negozi/bergamo" },
-            { name: "Bep's Vicenza", lat: 45.529185, lng: 11.498584, link: "https://www.beps.it/it/negozi/vicenza" },
-            { name: "Bep's Bologna", lat: 44.5198454, lng: 11.3617676, link: "https://www.beps.it/it/negozi/bologna" },
-            { name: "Bep's Reggio Emilia", lat: 44.7112067, lng: 10.6172083, link: "https://www.beps.it/it/negozi/reggio-emilia" },
-            { name: "Bep's Como", lat: 45.7632796, lng: 9.0558871, link: "https://www.beps.it/it/negozi/como" },
-            { name: "Bep's Torino - Chivasso", lat: 45.20136, lng: 7.893376, link: "https://www.beps.it/it/negozi/chivasso" },
-            { name: "Bep's Cremona", lat: 45.1340326, lng: 10.0380331, link: "https://www.beps.it/it/negozi/cremona" },
-            { name: "Bep's Verona - Castelnuovo del Garda", lat: 45.4377419, lng: 10.7527042, link: "https://www.beps.it/it/negozi/castelnuovo-del-garda" },
-            { name: "Bep's Milano - Rozzano", lat: 45.380344, lng: 9.1687192, link: "https://www.beps.it/it/negozi/rozzano" },
-            { name: "Bep's Sondrio - Castione Andevenno", lat: 46.162859, lng: 9.811668, link: "https://www.beps.it/it/negozi/sondrio" },
-            { name: "Bep's Treviso - San Fior", lat: 45.9053281, lng: 12.3362322, link: "https://www.beps.it/it/negozi/san-fior-treviso" },
-            { name: "Bep's Milano - Baranzate", lat: 45.533447, lng: 9.107669, link: "https://www.beps.it/it/negozi/baranzate-milano" },
-            { name: "Bep's Alessandria", lat: 44.909236, lng: 8.63542, link: "https://www.beps.it/it/negozi/alessandria" },
-            { name: "Bep's Modena", lat: 44.65464, lng: 10.874113, link: "https://www.beps.it/it/negozi/modena" },
-            { name: "Bep's Imola", lat: 44.374905, lng: 11.733159, link: "https://www.beps.it/it/negozi/imola" },
-            { name: "Bep's Cerro Maggiore", lat: 45.610434, lng: 8.938561, link: "https://www.beps.it/it/negozi/cerro-maggiore" },
-            { name: "Bep's Castelletto Ticino", lat: 45.719472, lng: 8.617704, link: "https://www.beps.it/it/negozi/castelletto-ticino" },
-            { name: "Bep's Piacenza", lat: 45.055101, lng: 9.656159, link: "https://www.beps.it/it/negozi/piacenza" },
-            { name: "Bep's Lissone", lat: 45.599147, lng: 9.233215, link: "https://www.beps.it/it/negozi/lissone" },
-            { name: "Bep's Perugia - Corciano", lat: 43.1017827, lng: 12.3033294, link: "https://www.beps.it/it/negozi/perugia-corciano" },
-            { name: "Bep's Ferrara", lat: 44.8076961, lng: 11.5879544, link: "https://www.beps.it/it/negozi/ferrara" },
-            { name: "Bep's Forli", lat: 44.2472468, lng: 12.0889976, link: "https://www.beps.it/it/negozi/forli" },
-            { name: "Bep's Ancona", lat: 43.561708, lng: 13.5117859, link: "https://www.beps.it/it/negozi/ancona" },
-            { name: "Bep's Trento", lat: 46.0846416, lng: 11.1196371, link: "https://www.beps.it/it/negozi/trento" },
-            { name: "Bep's Milano - Corsico", lat: 45.4293597, lng: 9.0785739, link: "https://www.beps.it/it/negozi/milano-corsico" }
-        ];
-
-        // Crea un gruppo di cluster
-        const markers = L.markerClusterGroup({
-            iconCreateFunction: function(cluster) {
-                const count = cluster.getChildCount();
-                return L.divIcon({
-                    html: `<div class='custom-cluster'>${count}</div>`,
-                    className: 'custom-cluster',
-                    iconSize: [45, 45]
-                });
-            }
-        });
-
-        // Aggiungi i marker al cluster
-        const markerArray = [];
-        stores.forEach(store => {
-            const customIcon = L.icon({
-                iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
-                iconSize: [40, 40],
-                iconAnchor: [20, 40],
-                popupAnchor: [0, -40]
+        // Aggiungi i marker dinamicamente
+        async function loadMarkers() {
+            const stores = await fetchStoreData();
+            const markers = L.markerClusterGroup({
+                iconCreateFunction: function(cluster) {
+                    const count = cluster.getChildCount();
+                    return L.divIcon({
+                        html: `<div class='custom-cluster'>${count}</div>`,
+                        className: 'custom-cluster',
+                        iconSize: [45, 45]
+                    });
+                }
             });
-            const marker = L.marker([store.lat, store.lng], { icon: customIcon })
-                .bindPopup(`<b>${store.name}</b><br><a href="${store.link}" target="_blank">Scopri di più</a>`);
-            markers.addLayer(marker);
-            markerArray.push(marker);
-        });
 
-        // Aggiungi i cluster alla mappa
-        map.addLayer(markers);
+            const markerArray = [];
+            stores.forEach(store => {
+                const customIcon = L.icon({
+                    iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40],
+                    popupAnchor: [0, -40]
+                });
+                const marker = L.marker([store.lat, store.lng], { icon: customIcon })
+                    .bindPopup(`<b>${store.name}</b><br><a href="${store.link}" target="_blank">Scopri di più</a>`);
+                markers.addLayer(marker);
+                markerArray.push(marker);
+            });
 
-        // Calcola il bounding box per centrare la mappa
-        const group = L.featureGroup(markerArray);
-        map.fitBounds(group.getBounds());
+            map.addLayer(markers);
+
+            // Calcola il bounding box per centrare la mappa
+            const group = L.featureGroup(markerArray);
+            map.fitBounds(group.getBounds());
+        }
+
+        loadMarkers();
     </script>
 </body>
 </html>
