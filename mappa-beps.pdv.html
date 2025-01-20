@@ -69,7 +69,7 @@
                         lat: parseFloat((cols[38]?.trim() || "0").replace("'", "")), // Colonna "AM"
                         lng: parseFloat((cols[39]?.trim() || "0").replace("'", "")), // Colonna "AN"
                         link: cols[33]?.trim() || "#", // Colonna "AH"
-                        include: cols[43]?.trim() === "1" // Colonna "AO" (1 per pubblicare, 0 per non pubblicare)
+                        include: cols[40]?.trim() === "1" // Colonna "AO" (1 per pubblicare, 0 per non pubblicare)
                     };
                 })
                 .filter(store => {
