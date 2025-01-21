@@ -37,13 +37,17 @@
         // Funzione per tracciare eventi GA4
         function trackGA4Click(store, region) {
             const sendEvent = () => {
-                window.dataLayer.push({
-                    event: "store_locator",
-                    category: "store_select",
-                    action: region,
-                    label: store
-                });
-                console.log("Evento GA4 inviato:", { store, region });
+                if (typeof window.dataLayer !== "undefined") {
+                    window.dataLayer.push({
+                        event: "store_locator",
+                        category: "store_select",
+                        action: region,
+                        label: store
+                    });
+                    console.log("Evento GA4 inviato:", { store, region });
+                } else {
+                    console.warn("dataLayer non definito, evento non inviato.");
+                }
             };
 
             if (typeof window.dataLayer !== "undefined") {
@@ -138,8 +142,8 @@
 
             const markerArray = [];
             stores.forEach(store => {
-                const sanitizedStoreName = store.name.replace(/'/g, "\\'");
-                const sanitizedRegion = store.region.replace(/'/g, "\\'");
+                const sanitizedStoreName = encodeURIComponent(store.name);
+                const sanitizedRegion = encodeURIComponent(store.region);
 
                 const marker = L.marker([store.lat, store.lng], { icon: customIcon })
                     .bindPopup(
