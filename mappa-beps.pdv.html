@@ -34,52 +34,64 @@
 <body>
     <div id="map"></div>
     <script>
-        // Aggiungi il resto del codice qui (fetchStoreData, parseCSV, loadMarkers, ecc.)
+        function parseCSV(csvText) {
+            const rows = [];
+            const lines = csvText.split("\n");
+
+            lines.forEach((line) => {
+                const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+                const row = [];
+                let match;
+                while ((match = regex.exec(line)) !== null) {
+                    row.push(match[1] || match[2]);
+                }
+                rows.push(row);
+            });
+
+            return rows;
+        }
+
+        async function fetchStoreData() {
+            const response = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vS7QO8J4FXkewV74Gp5tBQp2DnOT8e5-ITUOLDBF7NzlYXCQYjHkGmT4-QN25tqH7EEuCQTBsfkzhse/pub?gid=0&single=true&output=csv");
+            const csvText = await response.text();
+            const rows = parseCSV(csvText);
+
+            return rows
+                .slice(1) 
+                .map((cols) => ({
+                    name: cols[5]?.trim() || "Sconosciuto",
+                    region: cols[42]?.trim() || "Sconosciuto",
+                    lat: parseFloat(cols[38]?.trim() || "0"),
+                    lng: parseFloat(cols[39]?.trim() || "0"),
+                    link: cols[41]?.trim() || "#",
+                    include: cols[40]?.trim() === "1"
+                }))
+                .filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+        }
+
         async function loadMarkers() {
             const stores = await fetchStoreData();
             console.log("Negozi caricati:", stores);
 
-            const markers = L.markerClusterGroup({
-                iconCreateFunction: function(cluster) {
-                    const count = cluster.getChildCount();
-                    return L.divIcon({
-                        html: `<div class='custom-cluster'>${count}</div>`,
-                        className: 'custom-cluster',
-                        iconSize: [45, 45]
-                    });
-                }
-            });
-
-            const customIcon = L.icon({
-                iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
-                iconSize: [40, 40],
-                iconAnchor: [20, 40],
-                popupAnchor: [0, -40]
-            });
+            const markers = L.markerClusterGroup();
 
             stores.forEach(store => {
-                const sanitizedStoreName = encodeURIComponent(store.name);
-                const sanitizedRegion = encodeURIComponent(store.region);
-
-                const marker = L.marker([store.lat, store.lng], { icon: customIcon })
-                    .bindPopup(
-                        `<b>${store.name}</b><br>Regione: ${store.region}<br>` +
-                        `<a href="${store.link}" target="_blank" onclick="trackGA4Click('${sanitizedStoreName}', '${sanitizedRegion}')">Scopri di più</a>`
-                    )
-                    .on('click', () => trackGA4Click(store.name, store.region));
+                const marker = L.marker([store.lat, store.lng])
+                    .bindPopup(`<b>${store.name}</b><br>Regione: ${store.region}<br><a href="${store.link}">Scopri di più</a>`);
                 markers.addLayer(marker);
             });
 
             map.addLayer(markers);
-
             if (stores.length > 0) {
-                const group = L.featureGroup(stores.map(store => L.marker([store.lat, store.lng])));
+                const group = L.featureGroup(stores.map(s => L.marker([s.lat, s.lng])));
                 map.fitBounds(group.getBounds());
             } else {
-                console.warn("Nessun marker valido trovato. La mappa utilizzerà un centro e uno zoom di default.");
-                map.setView([45.4642, 9.1900], 6); // Centro e zoom di default
+                map.setView([45.4642, 9.1900], 6);
             }
         }
+
+        const map = L.map('map').setView([45.4642, 9.1900], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         loadMarkers();
     </script>
