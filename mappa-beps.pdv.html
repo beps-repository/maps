@@ -80,11 +80,13 @@
         }
 
         // Inizializza la mappa
-        const map = L.map('map');
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+const map = L.map('map').setView([45.4642, 9.1900], 6); // Centra sull'Italia
+
+// Aggiungi il layer tile dal tuo TileServer GL
+L.tileLayer('http://34.140.242.12:8080/styles/basic-preview/512/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; TileServer GL'
+}).addTo(map);
 
         // Carica i marker
         async function loadMarkers() {
