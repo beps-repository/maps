@@ -32,6 +32,9 @@
             width: 40px;
             height: 40px;
         }
+        .leaflet-attribution-flag {
+            display:none;
+        }
     </style>
 </head>
 <body>
@@ -86,12 +89,28 @@
 const map = L.map('map').setView([45.4642, 9.1900], 6); // Centra sull'Italia
 
 // Aggiungi il layer tile dal tuo TileServer GL
-
-
-    L.vectorGrid.protobuf('https://tileserver.beps.it/data/italy_/{z}/{x}/{y}.pbf', {
-    rendererFactory: L.canvas.tile, // Migliora le prestazioni
+L.vectorGrid.protobuf('https://tileserver.beps.it/data/italy_/{z}/{x}/{y}.pbf', {
+    vectorTileLayerStyles: {
+        background: { fill: true, fillColor: 'hsl(47, 26%, 88%)' },
+        landuse_residential: { fill: true, fillColor: 'hsl(47, 13%, 86%)', fillOpacity: 0.7 },
+        landcover_grass: { fill: true, fillColor: 'hsl(82, 46%, 72%)', fillOpacity: 0.45 },
+        landcover_wood: { fill: true, fillColor: 'hsl(82, 46%, 72%)', fillOpacity: 0.8 },
+        water: { fill: true, fillColor: 'hsl(205, 56%, 73%)' },
+        water_intermittent: { fill: true, fillColor: 'hsl(205, 56%, 73%)', fillOpacity: 0.7 },
+        landcover_sand: { fill: true, fillColor: 'rgba(232, 214, 38, 1)', fillOpacity: 0.3 },
+        landuse: { fill: true, fillColor: '#eae0d0' },
+        landuse_overlay_national_park: { fill: true, fillColor: '#E1EBB0', fillOpacity: 0.75 },
+        roads: { stroke: true, color: '#808080', weight: 1 },
+        roads_minor: { stroke: true, color: 'hsl(0, 0%, 97%)', weight: 0.5 },
+        roads_major_motorway: { stroke: true, color: 'hsl(0, 0%, 100%)', weight: 2 },
+        buildings: { fill: true, fillColor: 'rgba(222, 211, 190, 1)', fillOpacity: 0.9 },
+        waterway: { stroke: true, color: 'hsl(205, 56%, 73%)', weight: 1 },
+        railway: { stroke: true, color: 'hsl(34, 12%, 66%)', weight: 1 },
+        boundaries: { stroke: true, color: 'hsla(0, 0%, 60%, 0.5)', weight: 1, dashArray: '2,1' },
+    },
     maxZoom: 14
 }).addTo(map);
+
 
 
 
