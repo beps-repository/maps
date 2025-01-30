@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-mapbox-gl@latest/Leaflet.MapboxGL.js"></script>
     <script src="https://unpkg.com/maptiler-leaflet@latest/leaflet-maptilersdk.js"></script>
     <script src="https://unpkg.com/leaflet.vectorgrid/dist/Leaflet.VectorGrid.min.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
@@ -90,11 +91,11 @@
 const map = L.map('map').setView([45.4642, 9.1900], 6); // Centra sull'Italia
 
 // Aggiungi il layer tile dal tuo TileServer GL
-L.maptilerStyleLayer({
-    style: "https://tileserver.beps.it/styles/klokantech-basic/style.json",
-    tileSize: 512,
-    attribution: '&copy; TileServer GL',
+L.mapboxGL({
+    style: 'https://tileserver.beps.it/styles/klokantech-basic/style.json',
+    accessToken: '' // Vuoto, non serve per TileServer privati
 }).addTo(map);
+
 
 
 
