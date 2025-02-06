@@ -74,7 +74,7 @@ async function fetchStoreData() {
         }
         const csvText = await response.text();
 
-        // Utilizza il parser del primo codice funzionante
+        // Parsing CSV con regex funzionante
         function parseCSV(csvText) {
             const rows = [];
             const lines = csvText.split("\n");
@@ -92,33 +92,29 @@ async function fetchStoreData() {
 
         const rows = parseCSV(csvText);
 
-        // Trova gli indici delle colonne
-        const header = rows[0];
-        const pubIndex = header.indexOf("pubblicato su mappa");
-        const latIndex = header.indexOf("lat");
-        const lngIndex = header.indexOf("longi");
-        const nameIndex = header.indexOf("nome negozio");
-        const linkIndex = header.indexOf("link");
-        const regionIndex = header.indexOf("regione");
+        // Debug: mostra le prime righe
+        console.log(" Prima riga del CSV ricevuto:", rows[0]);
+        console.log(" Esempio di riga dati:", rows[1]);
 
-        if (pubIndex === -1 || latIndex === -1 || lngIndex === -1 || nameIndex === -1) {
-            console.error("Errore: Alcune colonne non trovate nel CSV!");
+        if (rows.length < 2) {
+            console.error(" Errore: Il CSV ricevuto non contiene dati.");
             return [];
         }
 
         return rows.slice(1).map(cols => ({
-            name: cols[nameIndex]?.trim() || "Sconosciuto",
-            lat: parseFloat(cols[latIndex]?.trim()),
-            lng: parseFloat(cols[lngIndex]?.trim()),
-            link: cols[linkIndex]?.trim() || "#",
-            include: cols[pubIndex]?.trim() === "1",
-            region: cols[regionIndex]?.trim() || "Sconosciuto"
+            name: cols[5]?.trim() || "Sconosciuto", // Nome negozio
+            lat: parseFloat(cols[38]?.trim()), // Latitudine
+            lng: parseFloat(cols[39]?.trim()), // Longitudine
+            link: cols[41]?.trim() || "#", // Link
+            include: cols[40]?.trim() === "1", // Pubblicato su mappa
+            region: cols[42]?.trim() || "Sconosciuto" // Regione
         })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
     } catch (error) {
-        console.error("Errore nel caricamento dei dati:", error);
+        console.error(" Errore nel caricamento dei dati:", error);
         return [];
     }
 }
+
 
 
         const map = L.map('map').setView([45.4642, 9.1900], 6);
