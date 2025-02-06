@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mappa Punto Vendita</title>
+    
+    <!-- Leaflet e MapTiler -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+        #map {
+            width: 100%;
+            height: 500px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script>
+        const API_KEY = "VKBAXYVsDcZWpCqYKK8W";  // Sostituisci con la tua API Key di MapTiler
+        const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7QO8J4FXkewV74Gp5tBQp2DnOT8e5-ITUOLDBF7NzlYXCQYjHkGmT4-QN25tqH7EEuCQTBsfkzhse/pub?gid=0&single=true&output=csv";
+        
+        let storeId = null; // Lo store_id sarà ereditato da Magento
+
+        // Funzione per ottenere il parametro store_id dall'URL
+        function getStoreIdFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("store_id");
+        }
+
+        // Funzione per parsare il CSV
+        function parseCSV(csvText) {
+            const rows = [];
+            const lines = csvText.split("\n");
+            lines.forEach((line) => {
+                const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+                const row = [];
+                let match;
+                while ((match = regex.exec(line)) !== null) {
+                    row.push(match[1] || match[2]);
+                }
+                rows.push(row);
+            });
+            return rows;
+        }
+
+        // Funzione per cercare il negozio nel Google Sheet usando "cod. amasty"
+        async function fetchStoreLocation(storeId) {
+            const response = await fetch(GOOGLE_SHEET_URL);
+            const csvText = await response.text();
+            const rows = parseCSV(csvText);
+
+            // Trova l'indice della colonna "cod. amasty"
+            const header = rows[0]; // Prima riga contiene i nomi delle colonne
+            const codAmastyIndex = header.indexOf("cod. amasty");
+            const latIndex = 38; // Indice della colonna con latitudine
+            const lngIndex = 39; // Indice della colonna con longitudine
+            const nameIndex = 5; // Indice della colonna con il nome del negozio
+
+            if (codAmastyIndex === -1) {
+                console.error("Colonna 'cod. amasty' non trovata nel file CSV.");
+                return null;
+            }
+
+            // Trova la riga corrispondente allo store_id
+            const storeData = rows.find(row => row[codAmastyIndex] && row[codAmastyIndex].trim() === storeId);
+
+            if (storeData && storeData[latIndex] && storeData[lngIndex]) {
+                return {
+                    lat: parseFloat(storeData[latIndex]),
+                    lng: parseFloat(storeData[lngIndex]),
+                    name: storeData[nameIndex] || "Punto Vendita"
+                };
+            }
+            return null;
+        }
+
+        // Inizializza la mappa
+        async function initMap() {
+            storeId = getStoreIdFromURL();
+
+            if (!storeId) {
+                console.error("Nessun store_id ricevuto");
+                return;
+            }
+
+            const store = await fetchStoreLocation(storeId);
+
+            if (!store) {
+                console.error("Punto vendita non trovato nel Google Sheet.");
+                return;
+            }
+
+            const map = L.map("map").setView([store.lat, store.lng], 14);
+
+            L.tileLayer(`https://api.maptiler.com/maps/bright/{z}/{x}/{y}.png?key=${API_KEY}`, {
+                
+            }).addTo(map);
+
+            L.marker([store.lat, store.lng]).addTo(map)
+                .bindPopup(`<b>${store.name}</b>`)
+                .openPopup();
+        }
+
+        initMap();
+    </script>
+
+</body>
+</html>
