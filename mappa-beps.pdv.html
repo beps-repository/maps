@@ -74,18 +74,26 @@
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
 
         async function fetchStoreData() {
-            const response = await fetch(`${PROXY_URL}?type=csv`);
-            const csvText = await response.text();
-            const rows = csvText.split("\n").map(row => row.split(","));
+            try {
+                const response = await fetch(`${PROXY_URL}?type=csv`);
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
+                }
+                const csvText = await response.text();
+                const rows = csvText.split("\n").map(row => row.split(","));
 
-            return rows.slice(1).map(cols => ({
-                name: cols[5]?.trim() || "Sconosciuto", 
-                lat: parseFloat(cols[38]?.trim() || "0"), 
-                lng: parseFloat(cols[39]?.trim() || "0"), 
-                link: cols[41]?.trim() || "#", 
-                include: cols[40]?.trim() === "1", 
-                region: cols[42]?.trim() || "Sconosciuto" 
-            })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+                return rows.slice(1).map(cols => ({
+                    name: cols[5]?.trim() || "Sconosciuto", 
+                    lat: parseFloat(cols[38]?.trim() || "0"), 
+                    lng: parseFloat(cols[39]?.trim() || "0"), 
+                    link: cols[41]?.trim() || "#", 
+                    include: cols[40]?.trim() === "1", 
+                    region: cols[42]?.trim() || "Sconosciuto" 
+                })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+            } catch (error) {
+                console.error("Errore nel caricamento dei dati:", error);
+                return [];
+            }
         }
 
         const map = L.map('map').setView([45.4642, 9.1900], 6);
@@ -95,6 +103,8 @@
 
         async function loadMarkers() {
             const stores = await fetchStoreData();
+            console.log("Negozi ricevuti:", stores); // Debug
+
             const markers = L.markerClusterGroup({
                 iconCreateFunction: cluster => L.divIcon({
                     html: `<div class='custom-cluster'>${cluster.getChildCount()}</div>`,
@@ -104,17 +114,20 @@
             });
 
             stores.forEach(store => {
+                console.log("Aggiungo marker per:", store.name, "Lat:", store.lat, "Lng:", store.lng);
                 const customIcon = L.icon({
                     iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
                     iconSize: [40, 40]
                 });
-                L.marker([store.lat, store.lng], { icon: customIcon })
+
+                const marker = L.marker([store.lat, store.lng], { icon: customIcon })
                     .bindPopup(`
                         <b>${store.name}</b><br>
                         Regione: ${store.region}<br>
                         <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>
-                    `)
-                    .addTo(markers);
+                    `);
+
+                markers.addLayer(marker);
             });
 
             map.addLayer(markers);
