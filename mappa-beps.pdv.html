@@ -80,28 +80,32 @@
             throw new Error(`Errore HTTP: ${response.status}`);
         }
         const csvText = await response.text();
-        console.log("📌 Dati CSV ricevuti:", csvText); // 🔥 Debug: Controlla il contenuto del CSV
+        console.log("📌 Dati CSV ricevuti:", csvText);
 
-        const rows = csvText.split("\n").map(row => row.split(","));
-        console.log("📌 Righe CSV parsate:", rows); // 🔥 Debug: Controlla se le righe sono ben suddivise
+        const rows = csvText
+            .split("\n")
+            .map(row => row.replace(/"/g, "").trim()) // 🔹 Rimuove virgolette inutili e spazi extra
+            .map(row => row.split(","));
 
-        const stores = rows.slice(1).map(cols => ({
-            name: cols[5]?.trim() || "Sconosciuto",
-            lat: parseFloat(cols[38]?.trim() || "0"),
-            lng: parseFloat(cols[39]?.trim() || "0"),
-            link: cols[41]?.trim() || "#",
-            include: cols[40]?.trim() === "1",
-            region: cols[42]?.trim() || "Sconosciuto"
-        }));
+        console.log("📌 Righe CSV parsate:", rows);
+        console.log("📌 Intestazione CSV:", rows[0]); // 🔥 Debug
 
-        console.log("📌 Negozi estratti:", stores); // 🔥 Debug: Verifica che i negozi siano validi
-
-        return stores.filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+        return rows.slice(1)
+            .map(cols => ({
+                name: cols[5]?.trim() || "Sconosciuto",
+                lat: parseFloat(cols[38]?.trim() || "0"),
+                lng: parseFloat(cols[39]?.trim() || "0"),
+                link: cols[41]?.trim() || "#",
+                include: cols[40]?.trim() === "1",
+                region: cols[42]?.trim() || "Sconosciuto"
+            }))
+            .filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng) && store.lat !== 0 && store.lng !== 0); // 🔹 Rimuove negozi con coordinate errate
     } catch (error) {
         console.error("❌ Errore nel caricamento dei dati:", error);
         return [];
     }
 }
+
 
         const map = L.map('map').setView([45.4642, 9.1900], 6);
 
