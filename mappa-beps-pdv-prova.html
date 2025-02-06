@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Mappa con Cluster</title>
+    <title>Mappa con Cluster Ottimizzata</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -28,40 +28,26 @@
             font-size: 0.9rem;
             font-weight: 600;
         }
-        .custom-marker img {
-            width: 40px;
-            height: 40px;
-        }
-        .leaflet-attribution-flag {
-            display: none !important;
-        }
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-            border-radius: 0 !important;
-        }
         .scopri-di-piu-btn {
-            display: inline-block;
             background-color: #e10b17;
-            color: white !important;
-            padding: 2px 6px;
+            color: white;
+            padding: 4px 8px;
             text-decoration: none;
             font-weight: bold;
             text-align: center;
             transition: background-color 0.3s ease;
+            display: inline-block;
             margin-top: 10px;
         }
         .scopri-di-piu-btn:hover {
             background-color: #c00d15;
         }
-
-    .leaflet-overlay-pane path {
-    display: none !important;
-}
-
     </style>
 </head>
 <body>
 
     <div id="map"></div>
+    
     <script>
         if (document.referrer.indexOf("www.beps.it") === -1) {
             document.body.innerHTML = "<h1>Accesso Negato</h1>";
@@ -70,62 +56,53 @@
 
     <script>
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+        let markersLoaded = false;
 
-async function fetchStoreData() {
-    try {
-        const response = await fetch(`${PROXY_URL}?type=csv`);
-        if (!response.ok) {
-            throw new Error(`Errore HTTP: ${response.status}`);
-        }
-        const csvText = await response.text();
-
-        // Parsing CSV con regex funzionante
-        function parseCSV(csvText) {
-            const rows = [];
-            const lines = csvText.split("\n");
-            lines.forEach((line) => {
-                const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
-                const row = [];
-                let match;
-                while ((match = regex.exec(line)) !== null) {
-                    row.push(match[1] || match[2]);
+        async function fetchStoreData() {
+            if (sessionStorage.getItem("storeData")) {
+                return JSON.parse(sessionStorage.getItem("storeData"));
+            }
+            try {
+                const response = await fetch(`${PROXY_URL}?type=csv`, { cache: "reload" });
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
                 }
-                rows.push(row);
-            });
-            return rows;
+                const csvText = await response.text();
+                const rows = csvText.split("\n").map(line => line.split(","));
+                const stores = rows.slice(1).map(cols => ({
+                    name: cols[5]?.trim() || "Sconosciuto",
+                    lat: parseFloat(cols[38]?.trim()),
+                    lng: parseFloat(cols[39]?.trim()),
+                    link: cols[41]?.trim() || "#",
+                    include: cols[40]?.trim() === "1",
+                    region: cols[42]?.trim() || "Sconosciuto"
+                })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+                sessionStorage.setItem("storeData", JSON.stringify(stores));
+                return stores;
+            } catch (error) {
+                console.error("Errore nel caricamento dei dati:", error);
+                return [];
+            }
         }
 
-        const rows = parseCSV(csvText);
-
-        // Debug: mostra le prime righe
-        console.log(" Prima riga del CSV ricevuto:", rows[0]);
-        console.log(" Esempio di riga dati:", rows[1]);
-
-        if (rows.length < 2) {
-            console.error(" Errore: Il CSV ricevuto non contiene dati.");
-            return [];
-        }
-
-        return rows.slice(1).map(cols => ({
-            name: cols[5]?.trim() || "Sconosciuto", // Nome negozio
-            lat: parseFloat(cols[38]?.trim()), // Latitudine
-            lng: parseFloat(cols[39]?.trim()), // Longitudine
-            link: cols[41]?.trim() || "#", // Link
-            include: cols[40]?.trim() === "1", // Pubblicato su mappa
-            region: cols[42]?.trim() || "Sconosciuto" // Regione
-        })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
-    } catch (error) {
-        console.error(" Errore nel caricamento dei dati:", error);
-        return [];
-    }
-}
-
-
-
-        const map = L.map('map').setView([45.4642, 9.1900], 6);
-        L.tileLayer(`${PROXY_URL}?type=map&z={z}&x={x}&y={y}`).addTo(map);
+        const map = L.map('map', {
+            center: [45.4642, 9.1900],
+            zoom: 6,
+            zoomSnap: 0.5,
+            maxZoom: 17,
+            minZoom: 5
+        });
+        
+        L.tileLayer(`${PROXY_URL}?type=map&z={z}&x={x}&y={y}`, {
+            useCache: true,
+            updateWhenIdle: false,
+            updateWhenZooming: false,
+            keepBuffer: 3
+        }).addTo(map);
 
         async function loadMarkers() {
+            if (markersLoaded) return;
+            markersLoaded = true;
             const stores = await fetchStoreData();
             const markers = L.markerClusterGroup({
                 iconCreateFunction: cluster => L.divIcon({
@@ -149,10 +126,7 @@ async function fetchStoreData() {
             });
             map.addLayer(markers);
             if (stores.length > 0) {
-                const group = L.featureGroup(stores.map(s => L.marker([s.lat, s.lng])));
-                map.fitBounds(group.getBounds());
-            } else {
-                map.setView([45.4642, 9.1900], 6);
+                map.fitBounds(markers.getBounds());
             }
         }
 
