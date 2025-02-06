@@ -64,7 +64,9 @@
     </script>
 
     <script>
-        async function fetchStoreData() {
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+
+async function fetchStoreData() {
     try {
         const response = await fetch(`${PROXY_URL}?type=csv`);
         if (!response.ok) {
@@ -158,4 +160,3 @@
 
 </body>
 </html>
-
