@@ -27,53 +27,61 @@
 <body>
 
     <div id="map"></div>
-
     <script>
-        // 🔹 Protezione: accesso solo da beps.it
         if (document.referrer.indexOf("www.beps.it") === -1) {
             document.body.innerHTML = "<h1>Accesso Negato</h1>";
         }
+    </script>
+    <script>
+        // 🔹 URL della Google Cloud Function per proteggere l'API Key di MapTiler e l'URL del CSV
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+        
+        let storeId = null;
 
-        // 🔹 Chiavi API
-        const MAPTILER_KEY = "VKBAXYVsDcZWpCqYKK8W"; // Chiave API di MapTiler
-        const SHEETS_API_KEY = "AIzaSyDc3ctCypDqv7bNDYyeU-A9NfJlztKEdq0";  // Chiave API di Google Sheets
-        const SHEET_ID = "1RQxEK4agpUueN2JY1von9cxE-81OBxvT6CA8QO4rcbQT";  // ID del Google Sheet
-        const RANGE = "Foglio1!A:AS"; // Range dei dati nel foglio
-
-        // 🔹 Recupera lo store_id dall'URL
+        // 🔹 Funzione per ottenere il parametro store_id dall'URL
         function getStoreIdFromURL() {
             const params = new URLSearchParams(window.location.search);
             return params.get("store_id");
         }
 
-        // 🔹 Ottiene i dati dal Google Sheet
-        async function fetchStoreData() {
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${SHEETS_API_KEY}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            return data.values;  // Restituisce tutte le righe del foglio
+        // 🔹 Funzione per parsare il CSV
+        function parseCSV(csvText) {
+            const rows = [];
+            const lines = csvText.split("\n");
+            lines.forEach((line) => {
+                const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+                const row = [];
+                let match;
+                while ((match = regex.exec(line)) !== null) {
+                    row.push(match[1] || match[2]);
+                }
+                rows.push(row);
+            });
+            return rows;
         }
 
-        // 🔹 Cerca il negozio corrispondente allo store_id
+        // 🔹 Funzione per cercare il negozio nel Google Sheet usando "cod. amasty"
         async function fetchStoreLocation(storeId) {
-            const stores = await fetchStoreData();
-            const header = stores[0];  // Intestazioni delle colonne
+            const response = await fetch(`${PROXY_URL}?type=csv`);
+            const csvText = await response.text();
+            const rows = parseCSV(csvText);
 
-            // Trova gli indici delle colonne nel foglio
+            // Trova l'indice della colonna "cod. amasty"
+            const header = rows[0];
             const codAmastyIndex = header.indexOf("cod. amasty");
-            const latIndex = header.indexOf("latitudine");
-            const lngIndex = header.indexOf("longitudine");
-            const nameIndex = header.indexOf("nome negozio");
+            const latIndex = 38;
+            const lngIndex = 39;
+            const nameIndex = 5;
 
-            if (codAmastyIndex === -1 || latIndex === -1 || lngIndex === -1) {
-                console.error("Colonne mancanti nel Google Sheet.");
+            if (codAmastyIndex === -1) {
+                console.error("Colonna 'cod. amasty' non trovata nel file CSV.");
                 return null;
             }
 
-            // Cerca la riga corrispondente allo store_id
-            const storeData = stores.find(row => row[codAmastyIndex] === storeId);
+            // Trova la riga corrispondente allo store_id
+            const storeData = rows.find(row => row[codAmastyIndex] && row[codAmastyIndex].trim() === storeId);
 
-            if (storeData) {
+            if (storeData && storeData[latIndex] && storeData[lngIndex]) {
                 return {
                     lat: parseFloat(storeData[latIndex]),
                     lng: parseFloat(storeData[lngIndex]),
@@ -85,7 +93,7 @@
 
         // 🔹 Inizializza la mappa
         async function initMap() {
-            const storeId = getStoreIdFromURL();
+            storeId = getStoreIdFromURL();
 
             if (!storeId) {
                 console.error("Nessun store_id ricevuto");
@@ -101,12 +109,10 @@
 
             const map = L.map("map").setView([store.lat, store.lng], 14);
 
-            // 🔹 Stile della mappa MapTiler
-            L.tileLayer(`https://api.maptiler.com/maps/bright-v2/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`, {
-                attribution: '&copy; <a href="https://www.maptiler.com/">MapTiler</a>'
-            }).addTo(map);
+            // 🔹 Usa la Google Cloud Function per proteggere l'API Key di MapTiler
+            L.tileLayer(`${PROXY_URL}?type=map&z={z}&x={x}&y={y}`).addTo(map);
 
-            // 🔹 Stile del marker (logo Beps)
+            // 🔹 Usa lo stesso stile del marker dello store locator
             const customIcon = L.icon({
                 iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
                 iconSize: [40, 40],
@@ -124,3 +130,4 @@
 
 </body>
 </html>
+
