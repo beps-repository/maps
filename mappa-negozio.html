@@ -27,7 +27,11 @@
 <body>
 
     <div id="map"></div>
-
+    <script>
+  if (document.referrer.indexOf("www.beps.it") === -1) {
+      document.body.innerHTML = "<h1>Accesso Negato</h1>";
+  }
+</script>
     <script>
         const API_KEY = "VKBAXYVsDcZWpCqYKK8W";  // Sostituisci con la tua API Key di MapTiler
         const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7QO8J4FXkewV74Gp5tBQp2DnOT8e5-ITUOLDBF7NzlYXCQYjHkGmT4-QN25tqH7EEuCQTBsfkzhse/pub?gid=0&single=true&output=csv";
