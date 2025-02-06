@@ -5,10 +5,12 @@
     <title>Mappa con Cluster</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
+    <!-- Stili Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
 
+    <!-- Script Leaflet -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
@@ -32,12 +34,15 @@
             width: 40px;
             height: 40px;
         }
+        
         .leaflet-attribution-flag {
             display: none !important;
         }
+
         .leaflet-popup-content-wrapper, .leaflet-popup-tip {
             border-radius: 0 !important;
         }
+
         .scopri-di-piu-btn {
             display: inline-block;
             background-color: #e10b17;
@@ -49,6 +54,7 @@
             transition: background-color 0.3s ease;
             margin-top: 10px;
         }
+
         .scopri-di-piu-btn:hover {
             background-color: #c00d15;
         }
@@ -57,6 +63,7 @@
 <body>
 
     <div id="map"></div>
+
     <script>
         if (document.referrer.indexOf("www.beps.it") === -1) {
             document.body.innerHTML = "<h1>Accesso Negato</h1>";
@@ -64,42 +71,42 @@
     </script>
 
     <script>
+        // URL della Google Cloud Function Proxy
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
 
         async function fetchStoreData() {
-            try {
-                const response = await fetch(`${PROXY_URL}?type=csv`);
-                if (!response.ok) {
-                    throw new Error(`Errore HTTP: ${response.status}`);
-                }
-                const csvText = await response.text();
-                const rows = csvText.split("\n").map(row => row.split(","));
-                const header = rows[0].map(h => h.trim().toLowerCase());
-                const pubIndex = header.indexOf("pubblicato su mappa");
-                const latIndex = header.indexOf("lat");
-                const lngIndex = header.indexOf("longi");
-                const nameIndex = header.indexOf("nome negozio");
-                const linkIndex = header.indexOf("link");
-                const regionIndex = header.indexOf("regione");
-                if (pubIndex === -1 || latIndex === -1 || lngIndex === -1 || nameIndex === -1) {
-                    console.error("Errore: Alcune colonne non trovate nel CSV!");
-                    return [];
-                }
-                return rows.slice(1).map(cols => ({
-                    name: cols[nameIndex]?.trim() || "Sconosciuto",
-                    lat: parseFloat(cols[latIndex]?.trim() || "0"),
-                    lng: parseFloat(cols[lngIndex]?.trim() || "0"),
-                    link: cols[linkIndex]?.trim() || "#",
-                    include: cols[pubIndex]?.trim() !== "",
-                    region: cols[regionIndex]?.trim() || "Sconosciuto"
-                })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
-            } catch (error) {
-                console.error("Errore nel caricamento dei dati:", error);
+            const response = await fetch(`${PROXY_URL}?type=csv`);
+            const csvText = await response.text();
+            const rows = csvText.split("\n").map(row => row.split(","));
+
+            // Intestazione delle colonne
+            const header = rows[0].map(h => h.trim());
+            const nameIndex = header.indexOf("nome negozio");
+            const latIndex = header.indexOf("lat");
+            const lngIndex = header.indexOf("longi");
+            const linkIndex = header.indexOf("link");
+            const includeIndex = header.indexOf("pubblicato su mappa ");
+            const regionIndex = header.indexOf("regione");
+
+            if (latIndex === -1 || lngIndex === -1 || nameIndex === -1 || includeIndex === -1) {
+                console.error("Errore: alcune colonne richieste non sono state trovate nel CSV.");
                 return [];
             }
+
+            return rows.slice(1)
+                .map(cols => ({
+                    name: cols[nameIndex]?.trim() || "Sconosciuto",
+                    lat: parseFloat(cols[latIndex]?.trim()),
+                    lng: parseFloat(cols[lngIndex]?.trim()),
+                    link: cols[linkIndex]?.trim() || "#",
+                    include: cols[includeIndex]?.trim() === "1",
+                    region: cols[regionIndex]?.trim() || "Sconosciuto"
+                }))
+                .filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
         }
 
         const map = L.map('map').setView([45.4642, 9.1900], 6);
+
         L.tileLayer(`${PROXY_URL}?type=map&z={z}&x={x}&y={y}`).addTo(map);
 
         async function loadMarkers() {
@@ -111,6 +118,7 @@
                     iconSize: [45, 45]
                 })
             });
+
             stores.forEach(store => {
                 const customIcon = L.icon({
                     iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
@@ -124,7 +132,9 @@
                     `)
                     .addTo(markers);
             });
+
             map.addLayer(markers);
+
             if (stores.length > 0) {
                 const group = L.featureGroup(stores.map(s => L.marker([s.lat, s.lng])));
                 map.fitBounds(group.getBounds());
@@ -138,4 +148,3 @@
 
 </body>
 </html>
-
