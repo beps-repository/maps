@@ -21,18 +21,17 @@
     <div id="map"></div>
 
     <script>
-        const API_KEY = "VKBAXYVsDcZWpCqYKK8W";  // Sostituisci con la tua API Key di MapTiler
+        const API_KEY = "VKBAXYVsDcZWpCqYKK8W";  //  Sostituisci con la tua API Key di MapTiler
         const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7QO8J4FXkewV74Gp5tBQp2DnOT8e5-ITUOLDBF7NzlYXCQYjHkGmT4-QN25tqH7EEuCQTBsfkzhse/pub?gid=0&single=true&output=csv";
         
-        let storeId = null; // Lo store_id sarà ereditato da Magento
-
-        // Funzione per ottenere il parametro store_id dall'URL
-        function getStoreIdFromURL() {
-            const params = new URLSearchParams(window.location.search);
-            return params.get("store_id");
+        //  Funzione per ottenere il nome negozio dall' H1
+        function getStoreNameFromH1() {
+            const h1Text = document.querySelector("h1")?.innerText;
+            if (!h1Text) return null;
+            return h1Text.split(":")[0].trim(); // Prende solo il testo prima di ":"
         }
 
-        // Funzione per parsare il CSV
+        //  Funzione per parsare il CSV
         function parseCSV(csvText) {
             const rows = [];
             const lines = csvText.split("\n");
@@ -48,26 +47,25 @@
             return rows;
         }
 
-        // Funzione per cercare il negozio nel Google Sheet usando "cod. amasty"
-        async function fetchStoreLocation(storeId) {
+        //  Funzione per cercare il negozio nel Google Sheet
+        async function fetchStoreLocation(storeName) {
             const response = await fetch(GOOGLE_SHEET_URL);
             const csvText = await response.text();
             const rows = parseCSV(csvText);
 
-            // Trova l'indice della colonna "cod. amasty"
+            // Trova gli indici delle colonne
             const header = rows[0]; // Prima riga contiene i nomi delle colonne
-            const codAmastyIndex = header.indexOf("cod. amasty");
-            const latIndex = 38; // Indice della colonna con latitudine
-            const lngIndex = 39; // Indice della colonna con longitudine
-            const nameIndex = 5; // Indice della colonna con il nome del negozio
+            const nameIndex = header.indexOf("nome negozio");
+            const latIndex = 38;
+            const lngIndex = 39;
 
-            if (codAmastyIndex === -1) {
-                console.error("Colonna 'cod. amasty' non trovata nel file CSV.");
+            if (nameIndex === -1) {
+                console.error("Colonna 'nome negozio' non trovata nel file CSV.");
                 return null;
             }
 
-            // Trova la riga corrispondente allo store_id
-            const storeData = rows.find(row => row[codAmastyIndex] && row[codAmastyIndex].trim() === storeId);
+            // Trova la riga corrispondente al nome del negozio
+            const storeData = rows.find(row => row[nameIndex] && row[nameIndex].trim().toLowerCase() === storeName.toLowerCase());
 
             if (storeData && storeData[latIndex] && storeData[lngIndex]) {
                 return {
@@ -79,16 +77,16 @@
             return null;
         }
 
-        // Inizializza la mappa
+        //  Inizializza la mappa
         async function initMap() {
-            storeId = getStoreIdFromURL();
+            const storeName = getStoreNameFromH1();
 
-            if (!storeId) {
-                console.error("Nessun store_id ricevuto");
+            if (!storeName) {
+                console.error("Nessun nome negozio trovato nell'H1.");
                 return;
             }
 
-            const store = await fetchStoreLocation(storeId);
+            const store = await fetchStoreLocation(storeName);
 
             if (!store) {
                 console.error("Punto vendita non trovato nel Google Sheet.");
@@ -98,7 +96,7 @@
             const map = L.map("map").setView([store.lat, store.lng], 14);
 
             L.tileLayer(`https://api.maptiler.com/maps/bright/{z}/{x}/{y}.png?key=${API_KEY}`, {
-                
+                attribution: '&copy; <a href="https://www.maptiler.com/">MapTiler</a>'
             }).addTo(map);
 
             L.marker([store.lat, store.lng]).addTo(map)
@@ -106,7 +104,8 @@
                 .openPopup();
         }
 
-        initMap();
+        // Avvia la mappa dopo il caricamento della pagina
+        document.addEventListener("DOMContentLoaded", initMap);
     </script>
 
 </body>
