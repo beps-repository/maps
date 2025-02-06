@@ -66,42 +66,47 @@
     <script>
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
 
-        async function fetchStoreData() {
-            try {
-                const response = await fetch(`${PROXY_URL}?type=csv`);
-                if (!response.ok) {
-                    throw new Error(`Errore HTTP: ${response.status}`);
-                }
-                const csvText = await response.text();
-                const rows = csvText.split("\n").map(row => row.split(","));
-                const header = rows[0].map(h => h.trim().toLowerCase());
-                const pubIndex = header.indexOf("pubblicato su mappa");
-                const latIndex = header.indexOf("lat");
-                const lngIndex = header.indexOf("longi");
-                const nameIndex = header.indexOf("nome negozio");
-                const linkIndex = header.indexOf("link");
-                const regionIndex = header.indexOf("regione");
-                if (pubIndex === -1 || latIndex === -1 || lngIndex === -1 || nameIndex === -1) {
-                    console.error("Errore: Alcune colonne non trovate nel CSV!");
-                    return [];
-                }
-                return rows.slice(1).map(cols => {
-                    const isPublished = cols[pubIndex]?.trim();
-                    console.log(`Negozi: ${cols[nameIndex]} - Pubblicato su mappa: ${isPublished}`);
-                    return {
-                        name: cols[nameIndex]?.trim() || "Sconosciuto",
-                        lat: parseFloat(cols[latIndex]?.trim()),
-                        lng: parseFloat(cols[lngIndex]?.trim()),
-                        link: cols[linkIndex]?.trim() || "#",
-                        include: isPublished !== "" && !isNaN(parseFloat(cols[latIndex])) && !isNaN(parseFloat(cols[lngIndex])),
-                        region: cols[regionIndex]?.trim() || "Sconosciuto"
-                    };
-                }).filter(store => store.include);
-            } catch (error) {
-                console.error("Errore nel caricamento dei dati:", error);
-                return [];
-            }
+async function fetchStoreData() {
+    try {
+        const response = await fetch(`${PROXY_URL}?type=csv`);
+        if (!response.ok) {
+            throw new Error(`Errore HTTP: ${response.status}`);
         }
+        const csvText = await response.text();
+        const rows = csvText.split("\n").map(row => row.split(","));
+        const header = rows[0].map(h => h.trim().toLowerCase());
+
+        // Trova dinamicamente gli indici
+        const pubIndex = header.findIndex(h => h.trim().toLowerCase() === "pubblicato su mappa");
+        const latIndex = header.indexOf("lat");
+        const lngIndex = header.indexOf("longi");
+        const nameIndex = header.indexOf("nome negozio");
+        const linkIndex = header.indexOf("link");
+        const regionIndex = header.indexOf("regione");
+
+        if (pubIndex === -1 || latIndex === -1 || lngIndex === -1 || nameIndex === -1) {
+            console.error("Errore: Alcune colonne non trovate nel CSV!");
+            return [];
+        }
+
+        return rows.slice(1).map(cols => {
+            const isPublished = cols[pubIndex]?.trim();
+            console.log(`Negozi: ${cols[nameIndex]} - Pubblicato su mappa: ${isPublished}`);
+
+            return {
+                name: cols[nameIndex]?.trim() || "Sconosciuto",
+                lat: parseFloat(cols[latIndex]?.trim()),
+                lng: parseFloat(cols[lngIndex]?.trim()),
+                link: cols[linkIndex]?.trim() || "#",
+                include: isPublished === "1", // Ora verifica correttamente il valore "1"
+                region: cols[regionIndex]?.trim() || "Sconosciuto"
+            };
+        }).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+    } catch (error) {
+        console.error("Errore nel caricamento dei dati:", error);
+        return [];
+    }
+}
 
         const map = L.map('map').setView([45.4642, 9.1900], 6);
         L.tileLayer(`${PROXY_URL}?type=map&z={z}&x={x}&y={y}`).addTo(map);
