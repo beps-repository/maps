@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+  
+    <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -29,7 +30,6 @@
             align-items: center;
             font-size: 0.9rem;
             font-weight: 600;
-            
         }
         .custom-marker img {
             width: 40px;
@@ -37,30 +37,28 @@
         }
         
         .leaflet-attribution-flag {
-    display: none !important;
-}
+            display: none !important;
+        }
 
-        /* Rimuove il border-radius dai popup di Leaflet */
-.leaflet-popup-content-wrapper, .leaflet-popup-tip {
-    border-radius: 0 !important;
-}
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            border-radius: 0 !important;
+        }
 
-/* Stile per il bottone "Scopri di più" */
-.scopri-di-piu-btn {
-    display: inline-block;
-    background-color: #e10b17;
-    color: white !important;
-    padding: 2px 6px;
-    text-decoration: none;
-    font-weight: bold;
-    text-align: center;
-    transition: background-color 0.3s ease;
-    margin-top: 10px;
-}
+        .scopri-di-piu-btn {
+            display: inline-block;
+            background-color: #e10b17;
+            color: white !important;
+            padding: 2px 6px;
+            text-decoration: none;
+            font-weight: bold;
+            text-align: center;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
 
-.scopri-di-piu-btn:hover {
-    background-color: #c00d15;
-}
+        .scopri-di-piu-btn:hover {
+            background-color: #c00d15;
+        }
 
     </style>
 </head>
@@ -68,16 +66,18 @@
 
     <div id="map"></div>
     <script>
-  if (document.referrer.indexOf("www.beps.it") === -1) {
-      document.body.innerHTML = "<h1>Accesso Negato</h1>";
-  }
-</script>
+        if (document.referrer.indexOf("www.beps.it") === -1) {
+            document.body.innerHTML = "<h1>Accesso Negato</h1>";
+        }
+    </script>
 
     <script>
-        // Chiave API di MapTiler
-        const API_KEY = "VKBAXYVsDcZWpCqYKK8W";  // 🔥 Sostituisci con la tua API Key di MapTiler
+        // Chiavi API
+        const MAPTILER_KEY = "VKBAXYVsDcZWpCqYKK8W"; // Chiave MapTiler
+        const SHEETS_API_KEY = "AIzaSyDc3ctCypDqv7bNDYyeU-A9NfJlztKEdq0"; // Chiave API Google Sheets
+        const SHEET_ID = "1RQxEK4agpUueN2JY1von9cxE-81OBxvT6CA8QO4rcbQT";
+        const RANGE = "Foglio1!A:AS";
 
-        // Funzione per inviare eventi alla pagina principale (Google Tag Manager)
         function trackGA4Click(store, region) {
             window.parent.postMessage({
                 event: "store_locator",
@@ -87,53 +87,23 @@
             }, "https://www.beps.it");
         }
 
-        // Funzione per parsare CSV
-        function parseCSV(csvText) {
-            const rows = [];
-            const lines = csvText.split("\n");
-            lines.forEach((line) => {
-                const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
-                const row = [];
-                let match;
-                while ((match = regex.exec(line)) !== null) {
-                    row.push(match[1] || match[2]);
-                }
-                rows.push(row);
-            });
-            return rows;
-        }
-
-        // Funzione per caricare dati dal CSV
         async function fetchStoreData() {
-            const response = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vS7QO8J4FXkewV74Gp5tBQp2DnOT8e5-ITUOLDBF7NzlYXCQYjHkGmT4-QN25tqH7EEuCQTBsfkzhse/pub?gid=0&single=true&output=csv");
-            const csvText = await response.text();
-            const rows = parseCSV(csvText);
-
-            return rows
-                .slice(1) // Salta l'intestazione
-                .map(cols => ({
-                    name: cols[5]?.trim() || "Sconosciuto", 
-                    lat: parseFloat(cols[38]?.trim() || "0"), 
-                    lng: parseFloat(cols[39]?.trim() || "0"), 
-                    link: cols[41]?.trim() || "#", 
-                    include: cols[40]?.trim() === "1", 
-                    region: cols[42]?.trim() || "Sconosciuto" 
-                }))
-                .filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${SHEETS_API_KEY}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.values;
         }
 
-        // Inizializza la mappa con MapTiler
-        const map = L.map('map').setView([45.4642, 9.1900], 6); // Centra sull'Italia
-
-        // Aggiunge il layer tile di MapTiler
-        L.tileLayer(`https://api.maptiler.com/maps/bright-v2/{z}/{x}/{y}.png?key=${API_KEY}`, {
-            maxZoom: 19,
-           // attribution: '&copy; <a href="https://www.maptiler.com/">MapTiler</a> contributors'
-        }).addTo(map);
-
-        // Carica i marker
         async function loadMarkers() {
             const stores = await fetchStoreData();
+            const header = stores[0];
+            const codAmastyIndex = header.indexOf("cod. amasty");
+            const latIndex = header.indexOf("latitudine");
+            const lngIndex = header.indexOf("longitudine");
+            const nameIndex = header.indexOf("nome negozio");
+            const linkIndex = header.indexOf("link");
+            const regionIndex = header.indexOf("regione");
+
             const markers = L.markerClusterGroup({
                 iconCreateFunction: cluster => L.divIcon({
                     html: `<div class='custom-cluster'>${cluster.getChildCount()}</div>`,
@@ -142,33 +112,45 @@
                 })
             });
 
-            stores.forEach(store => {
-                const customIcon = L.icon({
-                    iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
-                    iconSize: [40, 40]
-                });
-                L.marker([store.lat, store.lng], { icon: customIcon })
-                    .bindPopup(`
-        <b>${store.name}</b><br>
-        Regione: ${store.region}<br>
-        <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>
-    `)
-                    .on('click', () => trackGA4Click(store.name, store.region))
-                    .addTo(markers);
+            stores.slice(1).forEach(row => {
+                const store = {
+                    name: row[nameIndex],
+                    lat: parseFloat(row[latIndex]),
+                    lng: parseFloat(row[lngIndex]),
+                    link: row[linkIndex],
+                    region: row[regionIndex]
+                };
+
+                if (!isNaN(store.lat) && !isNaN(store.lng)) {
+                    const customIcon = L.icon({
+                        iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
+                        iconSize: [40, 40]
+                    });
+                    L.marker([store.lat, store.lng], { icon: customIcon })
+                        .bindPopup(`
+                            <b>${store.name}</b><br>
+                            Regione: ${store.region}<br>
+                            <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>
+                        `)
+                        .on('click', () => trackGA4Click(store.name, store.region))
+                        .addTo(markers);
+                }
             });
 
             map.addLayer(markers);
-
-            if (stores.length > 0) {
-                const group = L.featureGroup(stores.map(s => L.marker([s.lat, s.lng])));
-                map.fitBounds(group.getBounds());
-            } else {
-                map.setView([45.4642, 9.1900], 6);
-            }
         }
+
+        const map = L.map('map').setView([45.4642, 9.1900], 6);
+        L.tileLayer(`https://api.maptiler.com/maps/bright-v2/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`, {
+            maxZoom: 19
+        }).addTo(map);
 
         loadMarkers();
     </script>
 
 </body>
 </html>
+
+
+
+
