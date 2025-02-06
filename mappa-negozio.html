@@ -14,6 +14,14 @@
             width: 100%;
             height: 500px;
         }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 0px !imprortant;
+        }    
+
+        .leaflet-attribution-flag {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -24,7 +32,7 @@
         const API_KEY = "VKBAXYVsDcZWpCqYKK8W";  // Sostituisci con la tua API Key di MapTiler
         const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS7QO8J4FXkewV74Gp5tBQp2DnOT8e5-ITUOLDBF7NzlYXCQYjHkGmT4-QN25tqH7EEuCQTBsfkzhse/pub?gid=0&single=true&output=csv";
         
-        let storeId = null; // Lo store_id sarà ereditato da Magento
+        let storeId = null;
 
         // Funzione per ottenere il parametro store_id dall'URL
         function getStoreIdFromURL() {
@@ -57,9 +65,9 @@
             // Trova l'indice della colonna "cod. amasty"
             const header = rows[0]; // Prima riga contiene i nomi delle colonne
             const codAmastyIndex = header.indexOf("cod. amasty");
-            const latIndex = 38; // Indice della colonna con latitudine
-            const lngIndex = 39; // Indice della colonna con longitudine
-            const nameIndex = 5; // Indice della colonna con il nome del negozio
+            const latIndex = 38;
+            const lngIndex = 39;
+            const nameIndex = 5;
 
             if (codAmastyIndex === -1) {
                 console.error("Colonna 'cod. amasty' non trovata nel file CSV.");
@@ -97,11 +105,20 @@
 
             const map = L.map("map").setView([store.lat, store.lng], 14);
 
+            // 🔹 Usa lo stesso stile della mappa dello store locator
             L.tileLayer(`https://api.maptiler.com/maps/bright/{z}/{x}/{y}.png?key=${API_KEY}`, {
-                
+                attribution: '&copy; <a href="https://www.maptiler.com/">MapTiler</a>'
             }).addTo(map);
 
-            L.marker([store.lat, store.lng]).addTo(map)
+            // 🔹 Usa lo stesso stile del marker dello store locator
+            const customIcon = L.icon({
+                iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png", // Usa lo stesso logo del locator
+                iconSize: [40, 40], // Dimensioni coerenti
+                iconAnchor: [20, 40], // Centra l'icona correttamente
+                popupAnchor: [0, -40] // Posiziona il popup sopra il marker
+            });
+
+            L.marker([store.lat, store.lng], { icon: customIcon }).addTo(map)
                 .bindPopup(`<b>${store.name}</b>`)
                 .openPopup();
         }
