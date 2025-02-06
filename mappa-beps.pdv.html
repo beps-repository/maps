@@ -84,27 +84,47 @@
 
         const rows = csvText
             .split("\n")
-            .map(row => row.replace(/"/g, "").trim()) // 🔹 Rimuove virgolette inutili e spazi extra
+            .map(row => row.replace(/"/g, "").trim()) // 🔹 Rimuove virgolette e spazi extra
             .map(row => row.split(","));
 
-        console.log("📌 Righe CSV parsate:", rows);
         console.log("📌 Intestazione CSV:", rows[0]); // 🔥 Debug
 
+        // Trova la posizione esatta della colonna "pubblicato su mappa"
+        const header = rows[0].map(h => h.trim().toLowerCase());
+        const pubIndex = header.indexOf("pubblicato su mappa");
+        const latIndex = header.indexOf("lat");
+        const lngIndex = header.indexOf("longi");
+        const nameIndex = header.indexOf("nome negozio");
+        const linkIndex = header.indexOf("link");
+        const regionIndex = header.indexOf("regione");
+
+        if (pubIndex === -1 || latIndex === -1 || lngIndex === -1 || nameIndex === -1) {
+            console.error("❌ Errore: Alcune colonne non trovate nel CSV!");
+            return [];
+        }
+
         return rows.slice(1)
-            .map(cols => ({
-                name: cols[5]?.trim() || "Sconosciuto",
-                lat: parseFloat(cols[38]?.trim() || "0"),
-                lng: parseFloat(cols[39]?.trim() || "0"),
-                link: cols[41]?.trim() || "#",
-                include: cols[40]?.trim() === "1",
-                region: cols[42]?.trim() || "Sconosciuto"
-            }))
-            .filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng) && store.lat !== 0 && store.lng !== 0); // 🔹 Rimuove negozi con coordinate errate
+            .map(cols => {
+                const isPublished = cols[pubIndex]?.trim(); // 🔹 Controlla la colonna dinamicamente
+                console.log(`📌 Negozi: ${cols[nameIndex]} - Pubblicato su mappa: ${isPublished}`); // 🔥 Debug
+
+                return {
+                    name: cols[nameIndex]?.trim() || "Sconosciuto",
+                    lat: parseFloat(cols[latIndex]?.trim() || "0"),
+                    lng: parseFloat(cols[lngIndex]?.trim() || "0"),
+                    link: cols[linkIndex]?.trim() || "#",
+                    include: isPublished === "1", // 🔹 Filtra solo se "1"
+                    region: cols[regionIndex]?.trim() || "Sconosciuto"
+                };
+            })
+            .filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng) && store.lat !== 0 && store.lng !== 0);
     } catch (error) {
         console.error("❌ Errore nel caricamento dei dati:", error);
         return [];
     }
 }
+
+
 
 
         const map = L.map('map').setView([45.4642, 9.1900], 6);
