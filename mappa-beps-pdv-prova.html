@@ -124,10 +124,11 @@ async function fetchStoreData() {
 
         
      const map = L.map('map').setView([45.4642, 9.1900], 6);
-        L.tileLayer('https://tileserver.beps.it/data/italy/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+       L.tileLayer('https://tileserver.beps.it/styles/basic/{z}/{x}/{y}@2x.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
 
 
         async function loadMarkers() {
