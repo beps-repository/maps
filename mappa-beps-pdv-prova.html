@@ -97,11 +97,21 @@
         }
 
         const map = new maplibregl.Map({
-            container: 'map',
-            style: 'https://tileserver.beps.it/styles/basic-preview/style.json',
-            center: [10, 50],
-            zoom: 6
-        });
+    container: 'map',
+    style: {
+        "version": 8,
+        "sources": {
+            "vector-tiles": {
+                "type": "vector",
+                "url": "https://tileserver.beps.it/styles/basic-preview.json"
+            }
+        },
+        "glyphs": "https://tileserver.beps.it/fonts/{fontstack}/{range}.pbf"
+    },
+    center: [10, 50],
+    zoom: 6
+});
+
 
         map.on('load', async () => {
             map.loadImage('https://beps-repository.github.io/assets-icons/marker.png', (error, image) => {
