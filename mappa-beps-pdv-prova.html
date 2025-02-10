@@ -20,7 +20,7 @@
             padding: 6px 10px;
             text-decoration: none;
             font-weight: bold;
-            border-radius: 4px;
+            border-radius: 0px;
             transition: background-color 0.3s ease;
             display: inline-block;
             margin-top: 10px;
@@ -42,10 +42,7 @@
                     throw new Error(`Errore HTTP: ${response.status}`);
                 }
                 const csvText = await response.text();
-                const stores = await fetchStoreData();
-
-
-
+                
                 function parseCSV(csvText) {
                     const rows = [];
                     const lines = csvText.split("\n");
@@ -62,7 +59,6 @@
                 }
 
                 const rows = parseCSV(csvText);
-
                 if (rows.length < 2) {
                     console.error("Errore: Il CSV ricevuto non contiene dati.");
                     return { type: "FeatureCollection", features: [] };
@@ -89,105 +85,81 @@
                 return { type: "FeatureCollection", features: [] };
             }
         }
-console.log("Negozio trovati:", stores.features.length);  // 👈 DEBUG
 
-if (!stores.features.length) {
-    console.warn("Nessun negozio trovato nel dataset ricevuto.");
-    return;
-}
-        function trackGA4Click(store, region) {
-            window.parent.postMessage({
-                event: "store_locator",
-                category: "store_select",
-                action: region,
-                label: store
-            }, "https://www.beps.it");
-        }
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: "https://tileserver.beps.it/styles/basic-preview/style.json",
+            center: [10, 50],
+            zoom: 6
+        });
 
-const map = new maplibregl.Map({
-    container: 'map',
-    style: "https://tileserver.beps.it/styles/basic-preview/style.json",
-    center: [10, 50],
-    zoom: 6
-});
-
-map.on('style.load', function () {
-    map.getStyle().layers.forEach(layer => {
-        if (layer.layout && layer.layout['text-font']) {
-            console.log(`Modifico font per il layer: ${layer.id}`); // DEBUG
-            map.setLayoutProperty(layer.id, 'text-font', ['Noto Sans Regular']);
-        }
-    });
-});
-
-
-
-
-
+        map.on('style.load', function () {
+            map.getStyle().layers.forEach(layer => {
+                if (layer.layout && layer.layout['text-font']) {
+                    console.log(`Modifico font per il layer: ${layer.id}`);
+                    map.setLayoutProperty(layer.id, 'text-font', ['Noto Sans Regular']);
+                }
+            });
+        });
 
         map.on('load', async () => {
-            map.loadImage('https://beps-repository.github.io/assets-icons/favicon.png', (error, image) => {
-    if (error) {
-        console.error("Errore nel caricamento del marker:", error);
-        return;
-    }
-    map.addImage('custom-marker', image);
-    console.log("✅ Marker caricato correttamente");
+            try {
+                const stores = await fetchStoreData();
+                if (!stores.features.length) {
+                    console.warn("Nessun negozio trovato nel dataset ricevuto.");
+                    return;
+                }
+                
+                map.addSource('stores', {
+                    type: 'geojson',
+                    data: stores,
+                    cluster: true,
+                    clusterMaxZoom: 14,
+                    clusterRadius: 50
                 });
 
-            map.loadImage('https://beps-repository.github.io/assets-icons/cluster-marker.png', (error, image) => {
-    if (error) {
-        console.error("Errore nel caricamento del cluster:", error);
-        return;
-    }
-    map.addImage('custom-cluster', image);
-    console.log("✅ Cluster caricato correttamente");
-});
-            const stores = await fetchStoreData();
-            if (!stores.features.length) {
-                console.warn("Nessun negozio trovato nel dataset ricevuto.");
-                return;
-            }
+                map.loadImage('https://beps-repository.github.io/assets-icons/favicon.png', (error, image) => {
+                    if (!error) map.addImage('custom-marker', image);
+                });
 
-            map.addSource('stores', {
-                type: 'geojson',
-                data: stores,
-                cluster: true,
-                clusterMaxZoom: 14,
-                clusterRadius: 50
-            });
+                map.loadImage('https://beps-repository.github.io/assets-icons/cluster-marker.png', (error, image) => {
+                    if (!error) map.addImage('custom-cluster', image);
+                });
 
-            map.addLayer({
-                id: 'clusters',
-                type: 'symbol',
-                source: 'stores',
-                filter: ['has', 'point_count'],
-                layout: {
-                    'icon-image': 'custom-cluster',
-                    'icon-size': 1,
-                    'text-field': '{point_count_abbreviated}',
-                    'text-size': 14
-                },
-                paint: {
-                    'text-color': '#fff'
+                map.addLayer({
+                    id: 'clusters',
+                    type: 'symbol',
+                    source: 'stores',
+                    filter: ['has', 'point_count'],
+                    layout: {
+                        'icon-image': 'custom-cluster',
+                        'icon-size': 1,
+                        'text-field': '{point_count_abbreviated}',
+                        'text-size': 14
+                    },
+                    paint: {
+                        'text-color': '#fff'
+                    }
+                });
+
+                map.addLayer({
+                    id: 'unclustered-point',
+                    type: 'symbol',
+                    source: 'stores',
+                    filter: ['!', ['has', 'point_count']],
+                    layout: {
+                        'icon-image': 'custom-marker',
+                        'icon-size': 1
+                    }
+                });
+
+                if (stores.features.length > 0) {
+                    const bounds = new maplibregl.LngLatBounds();
+                    stores.features.forEach((feature) => bounds.extend(feature.geometry.coordinates));
+                    map.fitBounds(bounds, { padding: 50 });
                 }
-            });
-
-            map.addLayer({
-                id: 'unclustered-point',
-                type: 'symbol',
-                source: 'stores',
-                filter: ['!', ['has', 'point_count']],
-                layout: {
-                    'icon-image': 'custom-marker',
-                    'icon-size': 1
-                }
-            });
-
-            if (stores.features.length > 0) {
-                const bounds = new maplibregl.LngLatBounds();
-                stores.features.forEach((feature) => bounds.extend(feature.geometry.coordinates));
-                map.fitBounds(bounds, { padding: 50 });
+            } catch (error) {
+                console.error("Errore generale:", error);
             }
         });
     </script>
