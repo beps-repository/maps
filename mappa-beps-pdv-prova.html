@@ -96,24 +96,20 @@
             }, "https://www.beps.it");
         }
 
-        const map = new maplibregl.Map({
+const map = new maplibregl.Map({
     container: 'map',
-    style: "https://tileserver.beps.it/styles/basic-preview/style.json",
+    style: {
+        "version": 8,
+        "sources": {
+            "vector-tiles": {
+                "type": "vector",
+                "url": "https://tileserver.beps.it/styles/basic-preview/style.json"
+            }
+        },
+        "glyphs": "https://tileserver.beps.it/fonts/Noto%20Sans%20Regular/{range}.pbf"
+    },
     center: [10, 50],
     zoom: 6
-});
-
-map.on('style.load', function () {
-    console.log("Stile caricato, modifico i font..."); // DEBUG
-
-    setTimeout(() => { // Aspettiamo un attimo per sicurezza
-        map.getStyle().layers.forEach(layer => {
-            if (layer.layout && layer.layout['text-font']) {
-                console.log(`Modifico font per il layer: ${layer.id}`); // DEBUG
-                map.setLayoutProperty(layer.id, 'text-font', ['Noto Sans Regular']);
-            }
-        });
-    }, 1000); // Aspetta 1 secondo per evitare errori di caricamento
 });
 
 
