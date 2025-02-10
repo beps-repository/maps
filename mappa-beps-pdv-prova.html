@@ -104,13 +104,25 @@ const map = new maplibregl.Map({
 });
 
 map.on('style.load', function () {
-    map.getStyle().layers.forEach(layer => {
-        if (layer.layout && layer.layout['text-font']) {
-            console.log(`Modifico font per il layer: ${layer.id}`); // DEBUG
-            map.setLayoutProperty(layer.id, 'text-font', ['Noto Sans Regular']);
+    const layersToHide = [
+        "housenumber",
+        "poi_label",
+        "airport-label",
+        "road_major_label",
+        "place_label_other",
+        "place_label_city",
+        "country_label-other",
+        "country_label"
+    ];
+
+    layersToHide.forEach(layer => {
+        if (map.getLayer(layer)) {
+            map.setLayoutProperty(layer, 'visibility', 'none');
+            console.log(`Disabilitato layer: ${layer}`);
         }
     });
 });
+
 
 
 
