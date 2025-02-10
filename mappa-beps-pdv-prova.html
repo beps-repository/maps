@@ -50,7 +50,9 @@
             try {
                 const response = await fetch(`${PROXY_URL}?type=json`);
                 if (!response.ok) throw new Error(`Errore HTTP: ${response.status}`);
-                return await response.json();
+                const data = await response.json();
+                console.log("Dati ricevuti:", data);
+                return data;
             } catch (error) {
                 console.error("Errore nel caricamento dei dati:", error);
                 return { type: "FeatureCollection", features: [] };
@@ -86,13 +88,26 @@
 
             map.addLayer({
                 id: 'clusters',
+                type: 'circle',
+                source: 'stores',
+                filter: ['has', 'point_count'],
+                paint: {
+                    'circle-color': '#e10b17',
+                    'circle-radius': ['step', ['get', 'point_count'], 20, 10, 30, 50, 40],
+                    'circle-opacity': 0.8
+                }
+            });
+
+            map.addLayer({
+                id: 'cluster-count',
                 type: 'symbol',
                 source: 'stores',
                 filter: ['has', 'point_count'],
                 layout: {
-                    'icon-image': 'custom-cluster',
                     'text-field': '{point_count_abbreviated}',
-                    'text-size': 14,
+                    'text-size': 14
+                },
+                paint: {
                     'text-color': '#fff'
                 }
             });
@@ -109,9 +124,18 @@
             });
 
             map.loadImage('https://www.beps.it/pub/media/beps/Logo_48x48.png', (error, image) => {
-                if (error) throw error;
-                map.addImage('custom-marker', image);
+                if (error) {
+                    console.error("Errore caricamento icona marker", error);
+                } else {
+                    map.addImage('custom-marker', image);
+                }
             });
+
+            if (stores.features.length > 0) {
+                const bounds = new maplibregl.LngLatBounds();
+                stores.features.forEach((feature) => bounds.extend(feature.geometry.coordinates));
+                map.fitBounds(bounds, { padding: 50 });
+            }
 
             map.on('click', 'unclustered-point', (e) => {
                 const coordinates = e.features[0].geometry.coordinates.slice();
