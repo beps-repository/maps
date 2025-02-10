@@ -48,12 +48,50 @@
 
         async function fetchStoreData() {
             try {
-                const response = await fetch(`${PROXY_URL}?type=json`);
-                const textResponse = await response.text();
-                console.log("Risposta ricevuta:", textResponse);
-                
-                if (!response.ok) throw new Error(`Errore HTTP: ${response.status}`);
-                return JSON.parse(textResponse);
+                const response = await fetch(`${PROXY_URL}?type=csv`);
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
+                }
+                const csvText = await response.text();
+
+                function parseCSV(csvText) {
+                    const rows = [];
+                    const lines = csvText.split("\n");
+                    lines.forEach((line) => {
+                        const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+                        const row = [];
+                        let match;
+                        while ((match = regex.exec(line)) !== null) {
+                            row.push(match[1] || match[2]);
+                        }
+                        rows.push(row);
+                    });
+                    return rows;
+                }
+
+                const rows = parseCSV(csvText);
+
+                if (rows.length < 2) {
+                    console.error("Errore: Il CSV ricevuto non contiene dati.");
+                    return { type: "FeatureCollection", features: [] };
+                }
+
+                return {
+                    type: "FeatureCollection",
+                    features: rows.slice(1).map(cols => ({
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [parseFloat(cols[39]?.trim()), parseFloat(cols[38]?.trim())]
+                        },
+                        properties: {
+                            name: cols[5]?.trim() || "Sconosciuto",
+                            region: cols[42]?.trim() || "Sconosciuto",
+                            link: cols[41]?.trim() || "#",
+                            include: cols[40]?.trim() === "1"
+                        }
+                    })).filter(store => store.properties.include && !isNaN(store.geometry.coordinates[0]) && !isNaN(store.geometry.coordinates[1]))
+                };
             } catch (error) {
                 console.error("Errore nel caricamento dei dati:", error);
                 return { type: "FeatureCollection", features: [] };
@@ -104,20 +142,6 @@
             });
 
             map.addLayer({
-                id: 'cluster-count',
-                type: 'symbol',
-                source: 'stores',
-                filter: ['has', 'point_count'],
-                layout: {
-                    'text-field': '{point_count_abbreviated}',
-                    'text-size': 14
-                },
-                paint: {
-                    'text-color': '#fff'
-                }
-            });
-
-            map.addLayer({
                 id: 'unclustered-point',
                 type: 'symbol',
                 source: 'stores',
@@ -133,16 +157,6 @@
                 stores.features.forEach((feature) => bounds.extend(feature.geometry.coordinates));
                 map.fitBounds(bounds, { padding: 50 });
             }
-
-            map.on('click', 'unclustered-point', (e) => {
-                const coordinates = e.features[0].geometry.coordinates.slice();
-                const { name, region, link } = e.features[0].properties;
-                new maplibregl.Popup()
-                    .setLngLat(coordinates)
-                    .setHTML(`<b>${name}</b><br>Regione: ${region}<br><a href="${link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>`)
-                    .addTo(map);
-                trackGA4Click(name, region);
-            });
         });
     </script>
 </body>
