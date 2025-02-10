@@ -98,19 +98,21 @@
 
 const map = new maplibregl.Map({
     container: 'map',
-    style: {
-        "version": 8,
-        "sources": {
-            "vector-tiles": {
-                "type": "vector",
-                "url": "https://tileserver.beps.it/styles/basic-preview/style.json"
-            }
-        },
-        "glyphs": "https://tileserver.beps.it/fonts/{fontstack}/{range}.pbf"
-    },
+    style: "https://tileserver.beps.it/styles/basic-preview/style.json",
     center: [10, 50],
     zoom: 6
 });
+
+map.on('style.load', function () {
+    map.getStyle().layers.forEach(layer => {
+        if (layer.layout && layer.layout['text-font']) {
+            console.log(`Modifico font per il layer: ${layer.id}`); // DEBUG
+            map.setLayoutProperty(layer.id, 'text-font', ['Noto Sans Regular']);
+        }
+    });
+});
+
+
 
 
 
