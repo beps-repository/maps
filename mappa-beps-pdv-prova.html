@@ -2,21 +2,12 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Mappa con Cluster</title>
+    <title>Mappa con Cluster - MapLibre</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
-
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
-        #map {
-            width: 100%;
-            height: 600px;
-        }
+        #map { width: 100%; height: 600px; }
         .custom-cluster {
             background: #e10b17;
             color: white;
@@ -28,132 +19,110 @@
             font-size: 0.9rem;
             font-weight: 600;
         }
-        .custom-marker img {
-            width: 40px;
-            height: 40px;
-        }
-        .leaflet-attribution-flag {
-            display: none !important;
-        }
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+        .mapboxgl-popup-content {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            font-size: 14px;
             border-radius: 0 !important;
         }
         .scopri-di-piu-btn {
-            display: inline-block;
             background-color: #e10b17;
             color: white !important;
-            padding: 2px 6px;
+            padding: 6px 10px;
             text-decoration: none;
             font-weight: bold;
-            text-align: center;
+            border-radius: 4px;
             transition: background-color 0.3s ease;
+            display: inline-block;
             margin-top: 10px;
         }
         .scopri-di-piu-btn:hover {
             background-color: #c00d15;
-        }
-
-        .leaflet-overlay-pane path {
-            display: none !important;
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <script>
-        if (document.referrer.indexOf("www.beps.it") === -1) {
-            document.body.innerHTML = "<h1>Accesso Negato</h1>";
-        }
-    </script>
-
-    <script>
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
 
         async function fetchStoreData() {
             try {
-                const response = await fetch(`${PROXY_URL}?type=csv`);
-                if (!response.ok) {
-                    throw new Error(`Errore HTTP: ${response.status}`);
-                }
-                const csvText = await response.text();
-
-                function parseCSV(csvText) {
-                    const rows = [];
-                    const lines = csvText.split("\n");
-                    lines.forEach((line) => {
-                        const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
-                        const row = [];
-                        let match;
-                        while ((match = regex.exec(line)) !== null) {
-                            row.push(match[1] || match[2]);
-                        }
-                        rows.push(row);
-                    });
-                    return rows;
-                }
-
-                const rows = parseCSV(csvText);
-
-                if (rows.length < 2) {
-                    console.error("Errore: Il CSV ricevuto non contiene dati.");
-                    return [];
-                }
-
-                return rows.slice(1).map(cols => ({
-                    name: cols[5]?.trim() || "Sconosciuto",
-                    lat: parseFloat(cols[38]?.trim()),
-                    lng: parseFloat(cols[39]?.trim()),
-                    link: cols[41]?.trim() || "#",
-                    include: cols[40]?.trim() === "1",
-                    region: cols[42]?.trim() || "Sconosciuto"
-                })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+                const response = await fetch(`${PROXY_URL}?type=json`);
+                if (!response.ok) throw new Error(`Errore HTTP: ${response.status}`);
+                return await response.json();
             } catch (error) {
                 console.error("Errore nel caricamento dei dati:", error);
-                return [];
+                return { type: "FeatureCollection", features: [] };
             }
         }
 
-        const map = L.map('map').setView([50, 10], 6.8);
-        
-        const bepsTiles = L.tileLayer('https://tileserver.beps.it/styles/basic-preview/512/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            minZoom: 6,
-            attribution: '&copy; OpenStreetMap contributors',
-            updateWhenIdle: true,
-            keepBuffer: 2
-        });
-        bepsTiles.addTo(map);
-        
-        async function loadMarkers() {
-            const stores = await fetchStoreData();
-            const markers = L.markerClusterGroup({
-                iconCreateFunction: cluster => L.divIcon({
-                    html: `<div class='custom-cluster'>${cluster.getChildCount()}</div>`,
-                    className: 'custom-cluster',
-                    iconSize: [45, 45]
-                })
-            });
-            stores.forEach(store => {
-                const customIcon = L.icon({
-                    iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
-                    iconSize: [40, 40]
-                });
-                L.marker([store.lat, store.lng], { icon: customIcon })
-                    .bindPopup(`
-                        <b>${store.name}</b><br>
-                        Regione: ${store.region}<br>
-                        <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>
-                    `)
-                    .addTo(markers);
-            });
-            map.addLayer(markers);
-            if (stores.length > 0) {
-                const group = L.featureGroup(stores.map(s => L.marker([s.lat, s.lng])));
-                map.fitBounds(group.getBounds());
-            }
+        function trackGA4Click(store, region) {
+            window.parent.postMessage({
+                event: "store_locator",
+                category: "store_select",
+                action: region,
+                label: store
+            }, "https://www.beps.it");
         }
-        
-        loadMarkers();
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tileserver.beps.it/styles/basic-preview/style.json',
+            center: [10, 50],
+            zoom: 6
+        });
+
+        map.on('load', async () => {
+            const stores = await fetchStoreData();
+
+            map.addSource('stores', {
+                type: 'geojson',
+                data: stores,
+                cluster: true,
+                clusterMaxZoom: 14,
+                clusterRadius: 50
+            });
+
+            map.addLayer({
+                id: 'clusters',
+                type: 'symbol',
+                source: 'stores',
+                filter: ['has', 'point_count'],
+                layout: {
+                    'icon-image': 'custom-cluster',
+                    'text-field': '{point_count_abbreviated}',
+                    'text-size': 14,
+                    'text-color': '#fff'
+                }
+            });
+
+            map.addLayer({
+                id: 'unclustered-point',
+                type: 'symbol',
+                source: 'stores',
+                filter: ['!', ['has', 'point_count']],
+                layout: {
+                    'icon-image': 'custom-marker',
+                    'icon-size': 1
+                }
+            });
+
+            map.loadImage('https://www.beps.it/pub/media/beps/Logo_48x48.png', (error, image) => {
+                if (error) throw error;
+                map.addImage('custom-marker', image);
+            });
+
+            map.on('click', 'unclustered-point', (e) => {
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                const { name, region, link } = e.features[0].properties;
+                new maplibregl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(`<b>${name}</b><br>Regione: ${region}<br><a href="${link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>`)
+                    .addTo(map);
+                trackGA4Click(name, region);
+            });
+        });
     </script>
 </body>
 </html>
