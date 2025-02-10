@@ -11,7 +11,7 @@
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-
+    <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <style>
         #map {
             width: 100%;
@@ -123,11 +123,21 @@ async function fetchStoreData() {
 
 
         
-     const map = L.map('map').setView([45.4642, 9.1900], 6);
-       L.tileLayer('https://tileserver.beps.it/styles/basic-preview/512/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
+      const map = L.map('map').setView([45.4642, 9.1900], 6);
+
+    const vectorTileLayer = L.vectorGrid.protobuf("https://tileserver.beps.it/data/italy/{z}/{x}/{y}.pbf", {
+        maxZoom: 14,
+        vectorTileLayerStyles: {
+            landuse: { fill: true, weight: 0, fillColor: "#a3e635", fillOpacity: 0.5 },
+            water: { fill: true, weight: 0, fillColor: "#3b82f6", fillOpacity: 0.8 },
+            transportation: { color: "#f87171", weight: 1 },
+            boundary: { color: "#000", weight: 1, opacity: 0.5 }
+        },
+        interactive: true,
+        attribution: '&copy; OpenStreetMap contributors'
+    });
+
+    vectorTileLayer.addTo(map);
 
 
 
