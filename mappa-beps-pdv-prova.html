@@ -125,7 +125,7 @@ async function fetchStoreData() {
         
       const map = L.map('map').setView([45.4642, 9.1900], 6);
 
-    const vectorTileLayer = L.vectorGrid.protobuf("https://tileserver.beps.it/data/italy/{z}/{x}/{y}.pbf", {
+    const vectorTileLayer = L.vectorGrid.protobuf("https://tileserver.beps.it/data/v3/{z}/{x}/{y}.pbf", {
         maxZoom: 14,
         vectorTileLayerStyles: {
             landuse: { fill: true, weight: 0, fillColor: "#a3e635", fillOpacity: 0.5 },
