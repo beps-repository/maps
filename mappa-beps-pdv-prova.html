@@ -98,16 +98,7 @@
 
         const map = new maplibregl.Map({
     container: 'map',
-    style: {
-        "version": 8,
-        "sources": {
-            "vector-tiles": {
-                "type": "vector",
-                "url": "https://tileserver.beps.it/styles/basic-preview.json"
-            }
-        },
-        "glyphs": "https://tileserver.beps.it/fonts/{fontstack}/{range}.pbf"
-    },
+    style: "https://tileserver.beps.it/styles/basic-preview/style.json",
     center: [10, 50],
     zoom: 6
 });
