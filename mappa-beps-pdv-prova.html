@@ -1,20 +1,16 @@
 <!DOCTYPE html>
-<html lang="it">
+<html>
 <head>
     <meta charset="utf-8">
-    <title>Mappa con Cluster e Stile Vettoriale</title>
+    <title>Mappa con Cluster</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- Librerie necessarie -->
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" />
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
-    <script src="https://unpkg.com/@maplibre/leaflet-maplibre-gl/dist/leaflet-maplibre-gl.js"></script>
 
     <style>
         #map {
@@ -31,92 +27,110 @@
             align-items: center;
             font-size: 0.9rem;
             font-weight: 600;
-            border-radius: 50%;
+        }
+        .custom-marker img {
+            width: 40px;
+            height: 40px;
+        }
+        .leaflet-attribution-flag {
+            display: none !important;
+        }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            border-radius: 0 !important;
         }
         .scopri-di-piu-btn {
             display: inline-block;
             background-color: #e10b17;
             color: white !important;
-            padding: 4px 8px;
+            padding: 2px 6px;
             text-decoration: none;
             font-weight: bold;
             text-align: center;
             transition: background-color 0.3s ease;
             margin-top: 10px;
-            border-radius: 4px;
         }
         .scopri-di-piu-btn:hover {
             background-color: #c00d15;
         }
+
+    .leaflet-overlay-pane path {
+    display: none !important;
+}
+
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-
     <script>
-        // Blocco accesso se la pagina non è servita da www.beps.it
         if (document.referrer.indexOf("www.beps.it") === -1) {
             document.body.innerHTML = "<h1>Accesso Negato</h1>";
         }
+    </script>
 
-        // Inizializza la mappa Leaflet
-        const map = L.map('map').setView([45.4642, 9.1900], 6);
-
-        // Aggiunta del layer vettoriale MapLibre GL
-        L.maplibreGlLayer({
-            style: 'https://tileserver.beps.it/styles/basic-preview/style.json'
-        }).addTo(map);
-
-        // URL Proxy per il caricamento dei dati CSV dei negozi
+    <script>
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
 
-        // Funzione per ottenere i dati dei negozi
-        async function fetchStoreData() {
-            try {
-                const response = await fetch(`${PROXY_URL}?type=csv`);
-                if (!response.ok) {
-                    throw new Error(`Errore HTTP: ${response.status}`);
+async function fetchStoreData() {
+    try {
+        const response = await fetch(`${PROXY_URL}?type=csv`);
+        if (!response.ok) {
+            throw new Error(`Errore HTTP: ${response.status}`);
+        }
+        const csvText = await response.text();
+
+        // Parsing CSV con regex funzionante
+        function parseCSV(csvText) {
+            const rows = [];
+            const lines = csvText.split("\n");
+            lines.forEach((line) => {
+                const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+                const row = [];
+                let match;
+                while ((match = regex.exec(line)) !== null) {
+                    row.push(match[1] || match[2]);
                 }
-                const csvText = await response.text();
-
-                function parseCSV(csvText) {
-                    const rows = [];
-                    const lines = csvText.split("\n");
-                    lines.forEach((line) => {
-                        const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
-                        const row = [];
-                        let match;
-                        while ((match = regex.exec(line)) !== null) {
-                            row.push(match[1] || match[2]);
-                        }
-                        rows.push(row);
-                    });
-                    return rows;
-                }
-
-                const rows = parseCSV(csvText);
-
-                if (rows.length < 2) {
-                    console.error("Errore: Il CSV ricevuto non contiene dati.");
-                    return [];
-                }
-
-                return rows.slice(1).map(cols => ({
-                    name: cols[5]?.trim() || "Sconosciuto",
-                    lat: parseFloat(cols[38]?.trim()),
-                    lng: parseFloat(cols[39]?.trim()),
-                    link: cols[41]?.trim() || "#",
-                    include: cols[40]?.trim() === "1",
-                    region: cols[42]?.trim() || "Sconosciuto"
-                })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
-            } catch (error) {
-                console.error("Errore nel caricamento dei dati:", error);
-                return [];
-            }
+                rows.push(row);
+            });
+            return rows;
         }
 
-        // Caricamento dei marker
+        const rows = parseCSV(csvText);
+
+        // Debug: mostra le prime righe
+        console.log(" Prima riga del CSV ricevuto:", rows[0]);
+        console.log(" Esempio di riga dati:", rows[1]);
+
+        if (rows.length < 2) {
+            console.error(" Errore: Il CSV ricevuto non contiene dati.");
+            return [];
+        }
+
+        return rows.slice(1).map(cols => ({
+            name: cols[5]?.trim() || "Sconosciuto", // Nome negozio
+            lat: parseFloat(cols[38]?.trim()), // Latitudine
+            lng: parseFloat(cols[39]?.trim()), // Longitudine
+            link: cols[41]?.trim() || "#", // Link
+            include: cols[40]?.trim() === "1", // Pubblicato su mappa
+            region: cols[42]?.trim() || "Sconosciuto" // Regione
+        })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+    } catch (error) {
+        console.error(" Errore nel caricamento dei dati:", error);
+        return [];
+    }
+}
+
+
+
+        
+     const map = L.map('map').setView([45.4642, 9.1900], 6);
+       L.tileLayer('https://tileserver.beps.it/styles/basic-preview/512/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+
+
         async function loadMarkers() {
             const stores = await fetchStoreData();
             const markers = L.markerClusterGroup({
@@ -126,7 +140,6 @@
                     iconSize: [45, 45]
                 })
             });
-
             stores.forEach(store => {
                 const customIcon = L.icon({
                     iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
@@ -140,7 +153,6 @@
                     `)
                     .addTo(markers);
             });
-
             map.addLayer(markers);
             if (stores.length > 0) {
                 const group = L.featureGroup(stores.map(s => L.marker([s.lat, s.lng])));
