@@ -42,6 +42,9 @@
                     throw new Error(`Errore HTTP: ${response.status}`);
                 }
                 const csvText = await response.text();
+                const stores = await fetchStoreData();
+
+
 
                 function parseCSV(csvText) {
                     const rows = [];
@@ -86,7 +89,12 @@
                 return { type: "FeatureCollection", features: [] };
             }
         }
+console.log("Negozio trovati:", stores.features.length);  // 👈 DEBUG
 
+if (!stores.features.length) {
+    console.warn("Nessun negozio trovato nel dataset ricevuto.");
+    return;
+}
         function trackGA4Click(store, region) {
             window.parent.postMessage({
                 event: "store_locator",
@@ -119,15 +127,22 @@ map.on('style.load', function () {
 
         map.on('load', async () => {
             map.loadImage('https://beps-repository.github.io/assets-icons/favicon.png', (error, image) => {
-                if (error) throw error;
-                map.addImage('custom-marker', image);
-            });
+    if (error) {
+        console.error("Errore nel caricamento del marker:", error);
+        return;
+    }
+    map.addImage('custom-marker', image);
+    console.log("✅ Marker caricato correttamente");
+                });
 
             map.loadImage('https://beps-repository.github.io/assets-icons/cluster-marker.png', (error, image) => {
-                if (error) throw error;
-                map.addImage('custom-cluster', image);
-            });
-
+    if (error) {
+        console.error("Errore nel caricamento del cluster:", error);
+        return;
+    }
+    map.addImage('custom-cluster', image);
+    console.log("✅ Cluster caricato correttamente");
+});
             const stores = await fetchStoreData();
             if (!stores.features.length) {
                 console.warn("Nessun negozio trovato nel dataset ricevuto.");
