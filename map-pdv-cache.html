@@ -42,13 +42,12 @@
             display: inline-block;
             background-color: #e10b17;
             color: white !important;
-            padding: 6px 12px;
+            padding: 2px 6px;
             text-decoration: none;
             font-weight: bold;
             text-align: center;
             transition: background-color 0.3s ease;
             margin-top: 10px;
-            border-radius: 4px;
         }
         .scopri-di-piu-btn:hover {
             background-color: #c00d15;
@@ -61,64 +60,66 @@
 <body>
 
     <div id="map"></div>
-
     <script>
-        // Blocco accesso da domini non autorizzati
         if (document.referrer.indexOf("www.beps.it") === -1) {
             document.body.innerHTML = "<h1>Accesso Negato</h1>";
         }
+    </script>
 
-        // URL del proxy per il caricamento dei negozi
-        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv?type=csv";
+    <script>
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
 
-        // Funzione per caricare dati dal CSV
         async function fetchStoreData() {
             try {
-                const response = await fetch(PROXY_URL);
+                const response = await fetch(`${PROXY_URL}?type=csv`);
                 if (!response.ok) {
-                    console.error(`Errore HTTP: ${response.status}`);
-                    return [];
+                    throw new Error(`Errore HTTP: ${response.status}`);
                 }
                 const csvText = await response.text();
 
-                return parseCSV(csvText);
+                function parseCSV(csvText) {
+                    const rows = [];
+                    const lines = csvText.split("\n");
+                    lines.forEach((line) => {
+                        const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+                        const row = [];
+                        let match;
+                        while ((match = regex.exec(line)) !== null) {
+                            row.push(match[1] || match[2]);
+                        }
+                        rows.push(row);
+                    });
+                    return rows;
+                }
+
+                const rows = parseCSV(csvText);
+
+                if (rows.length < 2) {
+                    console.error("Errore: Il CSV ricevuto non contiene dati.");
+                    return [];
+                }
+
+                return rows.slice(1).map(cols => ({
+                    name: cols[5]?.trim() || "Sconosciuto",
+                    lat: parseFloat(cols[38]?.trim()),
+                    lng: parseFloat(cols[39]?.trim()),
+                    link: cols[41]?.trim() || "#",
+                    include: cols[40]?.trim() === "1",
+                    region: cols[42]?.trim() || "Sconosciuto"
+                })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
             } catch (error) {
                 console.error("Errore nel caricamento dei dati:", error);
                 return [];
             }
         }
 
-        // Funzione per parsare CSV
-        function parseCSV(csvText) {
-            const rows = [];
-            const lines = csvText.split("\n");
-            lines.forEach((line) => {
-                const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
-                const row = [];
-                let match;
-                while ((match = regex.exec(line)) !== null) {
-                    row.push(match[1] || match[2]);
-                }
-                rows.push(row);
-            });
-            return rows.slice(1).map(cols => ({
-                name: cols[5]?.trim() || "Sconosciuto",
-                lat: parseFloat(cols[38]?.trim()),
-                lng: parseFloat(cols[39]?.trim()),
-                link: cols[41]?.trim() || "#",
-                include: cols[40]?.trim() === "1",
-                region: cols[42]?.trim() || "Sconosciuto"
-            })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
-        }
-
-        // Inizializza la mappa centrata sull'Italia
-        const map = L.map('map').setView([45.5, 10.500], 7);
+        const map = L.map('map').setView([45.4642, 9.1900], 6);
         L.tileLayer('https://tileserver.beps.it/styles/basic-preview/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Funzione per tracciare eventi GA4 (solo per iframe)
+        // Funzione per tracciare eventi GA4
         function trackGA4Click(store, region) {
             console.log(`Tracciamento GA4: ${store} - ${region}`);
 
@@ -133,10 +134,15 @@
             window.parent.postMessage(eventData, "https://www.beps.it");
         }
 
-        // Caricamento dei marker sulla mappa
         async function loadMarkers() {
             const stores = await fetchStoreData();
-            const markers = L.markerClusterGroup();
+            const markers = L.markerClusterGroup({
+                iconCreateFunction: cluster => L.divIcon({
+                    html: `<div class='custom-cluster'>${cluster.getChildCount()}</div>`,
+                    className: 'custom-cluster',
+                    iconSize: [45, 45]
+                })
+            });
 
             stores.forEach(store => {
                 const customIcon = L.icon({
@@ -146,7 +152,8 @@
 
                 const marker = L.marker([store.lat, store.lng], { icon: customIcon })
                     .bindPopup(`
-                        <b>${store.name}</b><br>Regione: ${store.region}<br>
+                        <b>${store.name}</b><br>
+                        Regione: ${store.region}<br>
                         <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>
                     `)
                     .on('click', () => trackGA4Click(store.name, store.region));
