@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mappa con Cluster</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+    <style>
+        #map {
+            width: 100%;
+            height: 600px;
+        }
+        .custom-cluster {
+            background: #e10b17;
+            color: white;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .custom-marker img {
+            width: 40px;
+            height: 40px;
+        }
+        .leaflet-attribution-flag {
+            display: none !important;
+        }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            border-radius: 0 !important;
+        }
+        .scopri-di-piu-btn {
+            display: inline-block;
+            background-color: #e10b17;
+            color: white !important;
+            padding: 2px 6px;
+            text-decoration: none;
+            font-weight: bold;
+            text-align: center;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        .scopri-di-piu-btn:hover {
+            background-color: #c00d15;
+        }
+
+        .leaflet-overlay-pane path {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        if (document.referrer.indexOf("www.beps.it") === -1) {
+            document.body.innerHTML = "<h1>Accesso Negato</h1>";
+        }
+    </script>
+
+    <script>
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+
+        async function fetchStoreData() {
+            try {
+                const response = await fetch(`${PROXY_URL}?type=csv`);
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
+                }
+                const csvText = await response.text();
+
+                function parseCSV(csvText) {
+                    const rows = [];
+                    const lines = csvText.split("\n");
+                    lines.forEach((line) => {
+                        const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+                        const row = [];
+                        let match;
+                        while ((match = regex.exec(line)) !== null) {
+                            row.push(match[1] || match[2]);
+                        }
+                        rows.push(row);
+                    });
+                    return rows;
+                }
+
+                const rows = parseCSV(csvText);
+
+                if (rows.length < 2) {
+                    console.error("Errore: Il CSV ricevuto non contiene dati.");
+                    return [];
+                }
+
+                return rows.slice(1).map(cols => ({
+                    name: cols[5]?.trim() || "Sconosciuto",
+                    lat: parseFloat(cols[38]?.trim()),
+                    lng: parseFloat(cols[39]?.trim()),
+                    link: cols[41]?.trim() || "#",
+                    include: cols[40]?.trim() === "1",
+                    region: cols[42]?.trim() || "Sconosciuto"
+                })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+            } catch (error) {
+                console.error("Errore nel caricamento dei dati:", error);
+                return [];
+            }
+        }
+
+        const map = L.map('map').setView([50, 10], 6.8);
+        
+        const bepsTiles = L.tileLayer('https://tileserver.beps.it/styles/basic-preview/512/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            minZoom: 6,
+            attribution: '&copy; OpenStreetMap contributors',
+            updateWhenIdle: true,
+            keepBuffer: 2
+        });
+        bepsTiles.addTo(map);
+        
+        async function loadMarkers() {
+            const stores = await fetchStoreData();
+            const markers = L.markerClusterGroup({
+                iconCreateFunction: cluster => L.divIcon({
+                    html: `<div class='custom-cluster'>${cluster.getChildCount()}</div>`,
+                    className: 'custom-cluster',
+                    iconSize: [45, 45]
+                })
+            });
+            stores.forEach(store => {
+                const customIcon = L.icon({
+                    iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
+                    iconSize: [40, 40]
+                });
+                L.marker([store.lat, store.lng], { icon: customIcon })
+                    .bindPopup(`
+                        <b>${store.name}</b><br>
+                        Regione: ${store.region}<br>
+                        <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>
+                    `)
+                    .addTo(markers);
+            });
+            map.addLayer(markers);
+            if (stores.length > 0) {
+                const group = L.featureGroup(stores.map(s => L.marker([s.lat, s.lng])));
+                map.fitBounds(group.getBounds());
+            }
+        }
+        
+        loadMarkers();
+    </script>
+</body>
+</html>
