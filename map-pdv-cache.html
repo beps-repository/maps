@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/markercluster.js"></script>
 
     <style>
         #map {
@@ -27,10 +27,36 @@
             align-items: center;
             font-size: 0.9rem;
             font-weight: 600;
+            border-radius: 50%;
+            border: 2px solid white;
         }
         .custom-marker img {
             width: 40px;
             height: 40px;
+        }
+        .leaflet-attribution-flag {
+            display: none !important;
+        }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            border-radius: 0 !important;
+        }
+        .scopri-di-piu-btn {
+            display: inline-block;
+            background-color: #e10b17;
+            color: white !important;
+            padding: 6px 12px;
+            text-decoration: none;
+            font-weight: bold;
+            text-align: center;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+        .scopri-di-piu-btn:hover {
+            background-color: #c00d15;
+        }
+        .leaflet-overlay-pane path {
+            display: none !important;
         }
     </style>
 </head>
@@ -125,13 +151,7 @@
         // Caricamento dei marker sulla mappa
         async function loadMarkers() {
             const stores = await fetchStoreData();
-            const markers = L.markerClusterGroup({
-                iconCreateFunction: cluster => L.divIcon({
-                    html: `<div class='custom-cluster'>${cluster.getChildCount()}</div>`,
-                    className: 'custom-cluster',
-                    iconSize: [45, 45]
-                })
-            });
+            const markers = L.markerClusterGroup();
 
             stores.forEach(store => {
                 const customIcon = L.icon({
@@ -140,25 +160,6 @@
                 });
 
                 const marker = L.marker([store.lat, store.lng], { icon: customIcon })
-                    .bindPopup(`
-                        <b>${store.name}</b><br>
-                        Regione: ${store.region}<br>
-                        <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>
-                    `)
-                    .on('click', () => trackGA4Click(store.name, store.region));
-
-                markers.addLayer(marker);
-            });
-
-            map.addLayer(markers);
-
-            if (stores.length > 0) {
-                const group = L.featureGroup(stores.map(s => L.marker([s.lat, s.lng])));
-                map.fitBounds(group.getBounds(), { padding: [50, 50] });
-            }
-        }
-
-        loadMarkers();
-    </script>
-</body>
-</html>
+                    .bindPopup(`<b>${store.name}</b><br>Regione: ${store.region}<br>
+                        <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>`)
+                    .on('click', () => trackGA
