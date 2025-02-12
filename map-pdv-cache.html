@@ -32,43 +32,12 @@
             width: 40px;
             height: 40px;
         }
-        .leaflet-attribution-flag {
-            display: none !important;
-        }
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-            border-radius: 0 !important;
-        }
-        .scopri-di-piu-btn {
-            display: inline-block;
-            background-color: #e10b17;
-            color: white !important;
-            padding: 2px 6px;
-            text-decoration: none;
-            font-weight: bold;
-            text-align: center;
-            transition: background-color 0.3s ease;
-            margin-top: 10px;
-        }
-        .scopri-di-piu-btn:hover {
-            background-color: #c00d15;
-        }
-        .leaflet-overlay-pane path {
-            display: none !important;
-        }
     </style>
 </head>
 <body>
     <div id="map"></div>
-    <script>
-window.dataLayer = window.dataLayer || [];
-</script>
 
     <script>
-        // Blocca accesso da domini non autorizzati
-        if (document.referrer.indexOf("www.beps.it") === -1) {
-            document.body.innerHTML = "<h1>Accesso Negato</h1>";
-        }
-
         // URL del proxy per il caricamento dei negozi
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
 
@@ -131,23 +100,27 @@ window.dataLayer = window.dataLayer || [];
         bepsTiles.addTo(map);
 
         // Funzione per tracciare eventi su GA4
-function trackGA4Click(store, region) {
-    // Assicura che dataLayer sia definito
-    window.dataLayer = window.dataLayer || [];
+        function trackGA4Click(store, region) {
+            console.log(`Tracciamento GA4: ${store} - ${region}`);
 
-    console.log(`Tracciamento GA4: ${store} - ${region}`); // Debug in Console
+            const eventData = {
+                event: "store_locator",
+                category: "store_select",
+                action: region,
+                label: store
+            };
 
-    window.dataLayer.push({
-        event: "store_locator",
-        category: "store_select",
-        action: region,
-        label: store
-    });
+            console.log("Evento inviato a Magento:", eventData);
 
-    console.log("Evento inviato a GA4:", window.dataLayer); // Debug in Console
-}
-
-
+            if (window !== window.parent) {
+                // Se è in un iframe, invia il messaggio alla pagina principale
+                window.parent.postMessage(eventData, "https://www.beps.it");
+            } else {
+                // Se NON è in un iframe, invia direttamente a dataLayer
+                window.dataLayer = window.dataLayer || [];
+                window.dataLayer.push(eventData);
+            }
+        }
 
         // Caricamento dei marker sulla mappa
         async function loadMarkers() {
