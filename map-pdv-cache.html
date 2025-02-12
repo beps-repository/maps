@@ -65,51 +65,53 @@
 
     <script>
         // URL del proxy per il caricamento dei negozi
-        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv?type=csv";
 
         // Funzione per caricare dati dal CSV
         async function fetchStoreData() {
             try {
-                const response = await fetch(`${PROXY_URL}?type=csv`);
+                const response = await fetch(PROXY_URL, {
+                    method: "GET",
+                    headers: {
+                        "Cache-Control": "no-cache",
+                        "Pragma": "no-cache"
+                    }
+                });
+
                 if (!response.ok) {
-                    throw new Error(`Errore HTTP: ${response.status}`);
-                }
-                const csvText = await response.text();
-
-                function parseCSV(csvText) {
-                    const rows = [];
-                    const lines = csvText.split("\n");
-                    lines.forEach((line) => {
-                        const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
-                        const row = [];
-                        let match;
-                        while ((match = regex.exec(line)) !== null) {
-                            row.push(match[1] || match[2]);
-                        }
-                        rows.push(row);
-                    });
-                    return rows;
-                }
-
-                const rows = parseCSV(csvText);
-
-                if (rows.length < 2) {
-                    console.error("Errore: Il CSV ricevuto non contiene dati.");
+                    console.error(`Errore HTTP: ${response.status}`);
                     return [];
                 }
 
-                return rows.slice(1).map(cols => ({
-                    name: cols[5]?.trim() || "Sconosciuto",
-                    lat: parseFloat(cols[38]?.trim()),
-                    lng: parseFloat(cols[39]?.trim()),
-                    link: cols[41]?.trim() || "#",
-                    include: cols[40]?.trim() === "1",
-                    region: cols[42]?.trim() || "Sconosciuto"
-                })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+                const csvText = await response.text();
+                return parseCSV(csvText);
             } catch (error) {
                 console.error("Errore nel caricamento dei dati:", error);
                 return [];
             }
+        }
+
+        // Funzione per parsare CSV
+        function parseCSV(csvText) {
+            const rows = [];
+            const lines = csvText.split("\n");
+            lines.forEach((line) => {
+                const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+                const row = [];
+                let match;
+                while ((match = regex.exec(line)) !== null) {
+                    row.push(match[1] || match[2]);
+                }
+                rows.push(row);
+            });
+            return rows.slice(1).map(cols => ({
+                name: cols[5]?.trim() || "Sconosciuto",
+                lat: parseFloat(cols[38]?.trim()),
+                lng: parseFloat(cols[39]?.trim()),
+                link: cols[41]?.trim() || "#",
+                include: cols[40]?.trim() === "1",
+                region: cols[42]?.trim() || "Sconosciuto"
+            })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
         }
 
         // Inizializza la mappa centrata sull'Italia
@@ -125,7 +127,7 @@
         });
         bepsTiles.addTo(map);
 
-        // Funzione per tracciare eventi su GA4
+        // Funzione per tracciare eventi su GA4 (solo per iframe)
         function trackGA4Click(store, region) {
             console.log(`Tracciamento GA4: ${store} - ${region}`);
 
@@ -138,14 +140,8 @@
 
             console.log("Evento inviato a Magento:", eventData);
 
-            if (window !== window.parent) {
-                // Se è in un iframe, invia il messaggio alla pagina principale
-                window.parent.postMessage(eventData, "https://www.beps.it");
-            } else {
-                // Se NON è in un iframe, invia direttamente a dataLayer
-                window.dataLayer = window.dataLayer || [];
-                window.dataLayer.push(eventData);
-            }
+            // Invia l'evento alla pagina principale (Magento)
+            window.parent.postMessage(eventData, "https://www.beps.it");
         }
 
         // Caricamento dei marker sulla mappa
@@ -162,4 +158,15 @@
                 const marker = L.marker([store.lat, store.lng], { icon: customIcon })
                     .bindPopup(`<b>${store.name}</b><br>Regione: ${store.region}<br>
                         <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>`)
-                    .on('click', () => trackGA
+                    .on('click', () => trackGA4Click(store.name, store.region));
+
+                markers.addLayer(marker);
+            });
+
+            map.addLayer(markers);
+        }
+
+        loadMarkers();
+    </script>
+</body>
+</html>
