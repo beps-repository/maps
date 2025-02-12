@@ -128,16 +128,22 @@
         bepsTiles.addTo(map);
 
         // Funzione per tracciare eventi su GA4
-        function trackGA4Click(store, region) {
-            if (typeof window.dataLayer !== "undefined") {
-                window.dataLayer.push({
-                    event: "store_locator",
-                    category: "store_select",
-                    action: region,
-                    label: store
-                });
-            }
-        }
+function trackGA4Click(store, region) {
+    console.log(`Tracciamento GA4: ${store} - ${region}`); // Debug in Console
+
+    if (typeof window.dataLayer !== "undefined") {
+        window.dataLayer.push({
+            event: "store_locator",
+            category: "store_select",
+            action: region,
+            label: store
+        });
+        console.log("Evento inviato a GA4:", window.dataLayer); // Debug in Console
+    } else {
+        console.error("Errore: window.dataLayer non definito!");
+    }
+}
+
 
         // Caricamento dei marker sulla mappa
         async function loadMarkers() {
