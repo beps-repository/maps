@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mappa Punto Vendita</title>
     
-    <!-- Leaflet e MapTiler -->
+    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
@@ -25,26 +25,25 @@
     </style>
 </head>
 <body>
-
     <div id="map"></div>
+
     <script>
+        // Restrizione di accesso
         if (document.referrer.indexOf("www.beps.it") === -1) {
             document.body.innerHTML = "<h1>Accesso Negato</h1>";
         }
     </script>
     <script>
-        // 🔹 URL della Google Cloud Function per proteggere l'API Key di MapTiler e l'URL del CSV
-        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+        // URL del proxy per proteggere l'accesso al CSV
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyCsv";
         
-        let storeId = null;
-
-        // 🔹 Funzione per ottenere il parametro store_id dall'URL
+        // Ottieni lo store_id dai parametri URL
         function getStoreIdFromURL() {
             const params = new URLSearchParams(window.location.search);
             return params.get("store_id");
         }
 
-        // 🔹 Funzione per parsare il CSV
+        // Parsare CSV
         function parseCSV(csvText) {
             const rows = [];
             const lines = csvText.split("\n");
@@ -60,13 +59,12 @@
             return rows;
         }
 
-        // 🔹 Funzione per cercare il negozio nel Google Sheet usando "cod. amasty"
+        // Trova le coordinate dello store
         async function fetchStoreLocation(storeId) {
             const response = await fetch(`${PROXY_URL}?type=csv`);
             const csvText = await response.text();
             const rows = parseCSV(csvText);
 
-            // Trova l'indice della colonna "cod. amasty"
             const header = rows[0];
             const codAmastyIndex = header.indexOf("cod. amasty");
             const latIndex = 38;
@@ -78,7 +76,6 @@
                 return null;
             }
 
-            // Trova la riga corrispondente allo store_id
             const storeData = rows.find(row => row[codAmastyIndex] && row[codAmastyIndex].trim() === storeId);
 
             if (storeData && storeData[latIndex] && storeData[lngIndex]) {
@@ -91,28 +88,28 @@
             return null;
         }
 
-        // 🔹 Inizializza la mappa
+        // Inizializza la mappa
         async function initMap() {
-            storeId = getStoreIdFromURL();
-
+            const storeId = getStoreIdFromURL();
             if (!storeId) {
                 console.error("Nessun store_id ricevuto");
                 return;
             }
 
             const store = await fetchStoreLocation(storeId);
-
             if (!store) {
                 console.error("Punto vendita non trovato nel Google Sheet.");
                 return;
             }
 
             const map = L.map("map").setView([store.lat, store.lng], 14);
-
-            // 🔹 Usa la Google Cloud Function per proteggere l'API Key di MapTiler
-            L.tileLayer(`${PROXY_URL}?type=map&z={z}&x={x}&y={y}`).addTo(map);
-
-            // 🔹 Usa lo stesso stile del marker dello store locator
+            
+            // TileServer GL per servire le mappe raster
+            L.tileLayer('https://tileserver.beps.it/styles/basic-preview/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; TileServer GL'
+            }).addTo(map);
+            
             const customIcon = L.icon({
                 iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
                 iconSize: [40, 40],
@@ -127,7 +124,5 @@
 
         initMap();
     </script>
-
 </body>
 </html>
-
