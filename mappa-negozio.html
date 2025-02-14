@@ -26,24 +26,24 @@
 </head>
 <body>
     <div id="map"></div>
-
     <script>
-        // Restrizione di accesso
+        // Verifica se il referer proviene da beps.it
         if (document.referrer.indexOf("www.beps.it") === -1) {
             document.body.innerHTML = "<h1>Accesso Negato</h1>";
         }
     </script>
     <script>
-        // URL del proxy per proteggere l'accesso al CSV
-        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyCsv";
+        //  URL della Google Cloud Function per il file CSV
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+        const TILESERVER_URL = "https://tileserver.beps.it/styles/basic-preview/{z}/{x}/{y}.png";
         
-        // Ottieni lo store_id dai parametri URL
+        let storeId = null;
+
         function getStoreIdFromURL() {
             const params = new URLSearchParams(window.location.search);
             return params.get("store_id");
         }
 
-        // Parsare CSV
         function parseCSV(csvText) {
             const rows = [];
             const lines = csvText.split("\n");
@@ -59,12 +59,11 @@
             return rows;
         }
 
-        // Trova le coordinate dello store
         async function fetchStoreLocation(storeId) {
             const response = await fetch(`${PROXY_URL}?type=csv`);
             const csvText = await response.text();
             const rows = parseCSV(csvText);
-
+            
             const header = rows[0];
             const codAmastyIndex = header.indexOf("cod. amasty");
             const latIndex = 38;
@@ -77,7 +76,7 @@
             }
 
             const storeData = rows.find(row => row[codAmastyIndex] && row[codAmastyIndex].trim() === storeId);
-
+            
             if (storeData && storeData[latIndex] && storeData[lngIndex]) {
                 return {
                     lat: parseFloat(storeData[latIndex]),
@@ -88,28 +87,29 @@
             return null;
         }
 
-        // Inizializza la mappa
         async function initMap() {
-            const storeId = getStoreIdFromURL();
+            storeId = getStoreIdFromURL();
+
             if (!storeId) {
                 console.error("Nessun store_id ricevuto");
                 return;
             }
 
             const store = await fetchStoreLocation(storeId);
+
             if (!store) {
                 console.error("Punto vendita non trovato nel Google Sheet.");
                 return;
             }
 
             const map = L.map("map").setView([store.lat, store.lng], 14);
-            
-            // TileServer GL per servire le mappe raster
-            L.tileLayer('https://tileserver.beps.it/styles/basic-preview/{z}/{x}/{y}.png', {
+
+            //  Usa TileServer GL per servire le mappe raster
+            L.tileLayer(TILESERVER_URL, {
                 maxZoom: 19,
-                attribution: '&copy; TileServer GL'
+                attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
-            
+
             const customIcon = L.icon({
                 iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
                 iconSize: [40, 40],
