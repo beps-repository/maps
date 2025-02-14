@@ -102,7 +102,7 @@
                 return;
             }
 
-            const map = L.map("map").setView([store.lat, store.lng], 14);
+            const map = L.map("map").setView([store.lat, store.lng], 12);
 
             //  Usa TileServer GL per servire le mappe raster
             L.tileLayer(TILESERVER_URL, {
