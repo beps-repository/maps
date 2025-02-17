@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trova il Negozio Più Vicino</title>
+</head>
+<body>
+    <h2>Trova il Negozio Più Vicino</h2>
+    <input type="text" id="locationInput" placeholder="Inserisci CAP o città">
+    <button onclick="handleSearch()">Cerca</button>
+    <p id="result"></p>
+
+    <script>
+        const PROXY_URL = "https://beps-repository.github.io/maps/proxy.php"; // Modifica con il tuo proxy
+
+        async function fetchStoreData() {
+            const response = await fetch(`${PROXY_URL}?type=csv`);
+            if (!response.ok) throw new Error("Errore nel recupero dei dati");
+
+            const csvText = await response.text();
+            return parseCSV(csvText).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+        }
+
+        function parseCSV(csvText) {
+            const rows = csvText.split("\n").map(line => line.split(","));
+            return rows.slice(1).map(cols => ({
+                name: cols[5]?.trim() || "Sconosciuto", 
+                lat: parseFloat(cols[38]?.trim() || "0"), 
+                lng: parseFloat(cols[39]?.trim() || "0"), 
+                include: cols[40]?.trim() === "1" 
+            }));
+        }
+
+        async function geocodeLocation(query) {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            if (data.length > 0) {
+                return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+            } else {
+                throw new Error("Località non trovata.");
+            }
+        }
+
+        function haversineDistance(coord1, coord2) {
+            const R = 6371;
+            const dLat = (coord2.lat - coord1.lat) * Math.PI / 180;
+            const dLng = (coord2.lng - coord1.lng) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(coord1.lat * Math.PI / 180) * Math.cos(coord2.lat * Math.PI / 180) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        async function findNearestStore(userLocation) {
+            const stores = await fetchStoreData();
+            let nearestStore = null;
+            let minDistance = Infinity;
+
+            stores.forEach(store => {
+                const storeLocation = { lat: store.lat, lng: store.lng };
+                const distance = haversineDistance(userLocation, storeLocation);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestStore = store;
+                }
+            });
+
+            return nearestStore ? { name: nearestStore.name, distance: minDistance.toFixed(2) } : null;
+        }
+
+        async function handleSearch() {
+            const query = document.getElementById("locationInput").value;
+            const resultElement = document.getElementById("result");
+
+            try {
+                const userLocation = await geocodeLocation(query);
+                const result = await findNearestStore(userLocation);
+
+                if (result) {
+                    resultElement.innerHTML = `Il negozio più vicino è: <b>${result.name}</b>, a ${result.distance} km`;
+                } else {
+                    resultElement.innerHTML = "Nessun negozio trovato.";
+                }
+            } catch (error) {
+                resultElement.innerHTML = "Errore: " + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
