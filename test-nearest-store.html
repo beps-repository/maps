@@ -12,7 +12,8 @@
     <p id="result"></p>
 
     <script>
-        const PROXY_URL = "https://beps-repository.github.io/maps/proxy.php"; // Modifica con il tuo proxy
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+
 
         async function fetchStoreData() {
             const response = await fetch(`${PROXY_URL}?type=csv`);
