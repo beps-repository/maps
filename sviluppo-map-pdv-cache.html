@@ -66,13 +66,19 @@ const allowedDomains = ["www.beps.it", "sviluppo.beps.it", "www.axo.com"];
 // Controllo se la pagina è direttamente aperta (NON in iframe)
 const isDirectAccess = window.location === window.parent.location;
 
-// Controllo se c’è un referrer valido
+// Controllo se il referrer è valido
 const isAllowedReferrer = document.referrer && allowedDomains.some(domain => document.referrer.includes(domain));
 
-// Se non è accesso diretto e non c’è un referrer valido, blocca l’accesso
-if (!isDirectAccess && !isAllowedReferrer) {
+// Controllo se l'iframe è caricato dentro Google Sites
+const isGoogleSites = window.location !== window.parent.location && window.parent !== window;
+
+// Se è accesso diretto e il referrer non è consentito, blocca l’accesso
+if (isDirectAccess && !isAllowedReferrer) {
     document.body.innerHTML = "<h1>Accesso Negato</h1>";
+} else {
+    console.log("Accesso consentito da:", document.referrer || "Iframe senza referrer");
 }
+
 
 
     </script>
