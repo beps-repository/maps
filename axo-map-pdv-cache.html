@@ -28,18 +28,23 @@
             font-size: 0.9rem;
             font-weight: 600;
         }
-        .leaflet-marker-icon img {
+
+        .custom-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             width: 30px;
-            background-color: #000;
+            height: auto; /* Mantiene la proporzione */
+            background-color: black;
             padding: 15px 5px;
-            
+            border-radius: 5px; /* Se vuoi angoli arrotondati */
         }
+        
         .custom-marker img {
-            width: 30px;
-            /* height: 40px; */
-            background-color: #000;
-            padding: 15px 5px;
+            width: 100%;
+            height: auto;
         }
+
         .leaflet-attribution-flag {
             display: none !important;
         }
@@ -156,10 +161,12 @@ if (!allowedDomains.some(domain => document.referrer.includes(domain))) {
             });
 
             stores.forEach(store => {
-                const customIcon = L.icon({
-                    iconUrl: "https://www.axo.com/media/axo/axo_bordo_bianco.png",
-                    iconSize: [40, 40]
-                });
+                const customIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<img src="https://www.axo.com/media/axo/axo_bordo_bianco.png" alt="Marker">',
+                iconSize: [30, 'auto'] // Larghezza fissa, altezza proporzionale
+            });
+
 
                 const marker = L.marker([store.lat, store.lng], { icon: customIcon })
                     .bindPopup(`
