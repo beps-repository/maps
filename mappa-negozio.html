@@ -3,51 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mappa Punto Vendita</title>
-    
+    <title>Mappa Punti Vendita Selezionati</title>
+
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <style>
-        #map { 
-            width: 100%;
-            height: 500px;
-        }
-
-        .leaflet-popup-content-wrapper {
-            border-radius: 0px !important;
-        }    
-
-        .leaflet-attribution-flag {
-            display: none !important;
-        }
+        #map { width: 100%; height: 500px; }
+        .leaflet-popup-content-wrapper { border-radius: 0px !important; }
+        .leaflet-attribution-flag { display: none !important; }
     </style>
 </head>
 <body>
     <div id="map"></div>
+
     <script>
-        // Verifica se il referer proviene da beps.it
         if (document.referrer.indexOf("www.beps.it") === -1) {
             document.body.innerHTML = "<h1>Accesso Negato</h1>";
         }
     </script>
+
     <script>
-        //  URL della Google Cloud Function per il file CSV
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
         const TILESERVER_URL = "https://tileserver.beps.it/styles/basic-preview/{z}/{x}/{y}.png";
-        
-        let storeId = null;
 
-        function getStoreIdFromURL() {
+        function getStoreIdsFromURL() {
             const params = new URLSearchParams(window.location.search);
-            return params.get("store_id");
+            const idsParam = params.get("store_ids");
+            return idsParam ? idsParam.split(",").map(id => id.trim()) : [];
         }
 
         function parseCSV(csvText) {
             const rows = [];
             const lines = csvText.split("\n");
-            lines.forEach((line) => {
+            lines.forEach(line => {
                 const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
                 const row = [];
                 let match;
@@ -59,67 +49,64 @@
             return rows;
         }
 
-        async function fetchStoreLocation(storeId) {
+        async function fetchSelectedStores(storeIds) {
             const response = await fetch(`${PROXY_URL}?type=csv`);
             const csvText = await response.text();
             const rows = parseCSV(csvText);
-            
+
             const header = rows[0];
             const codAmastyIndex = header.indexOf("cod. amasty");
             const latIndex = 38;
             const lngIndex = 39;
             const nameIndex = 5;
 
-            if (codAmastyIndex === -1) {
-                console.error("Colonna 'cod. amasty' non trovata nel file CSV.");
-                return null;
-            }
-
-            const storeData = rows.find(row => row[codAmastyIndex] && row[codAmastyIndex].trim() === storeId);
-            
-            if (storeData && storeData[latIndex] && storeData[lngIndex]) {
-                return {
-                    lat: parseFloat(storeData[latIndex]),
-                    lng: parseFloat(storeData[lngIndex]),
-                    name: storeData[nameIndex] || "Punto Vendita"
-                };
-            }
-            return null;
+            return rows
+                .slice(1)
+                .filter(row => storeIds.includes(row[codAmastyIndex]))
+                .map(row => ({
+                    lat: parseFloat(row[latIndex]),
+                    lng: parseFloat(row[lngIndex]),
+                    name: row[nameIndex] || "Punto Vendita"
+                }))
+                .filter(store => !isNaN(store.lat) && !isNaN(store.lng));
         }
 
         async function initMap() {
-            storeId = getStoreIdFromURL();
-
-            if (!storeId) {
-                console.error("Nessun store_id ricevuto");
+            const storeIds = getStoreIdsFromURL();
+            if (storeIds.length === 0) {
+                console.error("Nessun store_ids specificato.");
                 return;
             }
 
-            const store = await fetchStoreLocation(storeId);
-
-            if (!store) {
-                console.error("Punto vendita non trovato nel Google Sheet.");
+            const stores = await fetchSelectedStores(storeIds);
+            if (stores.length === 0) {
+                console.error("Nessun punto vendita trovato.");
                 return;
             }
 
-            const map = L.map("map").setView([store.lat, store.lng], 12);
-
-            //  Usa TileServer GL per servire le mappe raster
+            const map = L.map("map");
             L.tileLayer(TILESERVER_URL, {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
-            const customIcon = L.icon({
-                iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
-                iconSize: [40, 40],
-                iconAnchor: [20, 40],
-                popupAnchor: [0, -40]
+            const bounds = [];
+
+            stores.forEach(store => {
+                const customIcon = L.icon({
+                    iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40],
+                    popupAnchor: [0, -40]
+                });
+
+                L.marker([store.lat, store.lng], { icon: customIcon }).addTo(map)
+                    .bindPopup(`<b>${store.name}</b>`);
+
+                bounds.push([store.lat, store.lng]);
             });
 
-            L.marker([store.lat, store.lng], { icon: customIcon }).addTo(map)
-                .bindPopup(`<b>${store.name}</b>`)
-                .openPopup();
+            map.fitBounds(bounds, { padding: [30, 30] });
         }
 
         initMap();
