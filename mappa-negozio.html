@@ -85,7 +85,9 @@
                 return;
             }
 
+            // Mappa: inizializzazione temporanea
             const map = L.map("map");
+
             L.tileLayer(TILESERVER_URL, {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap contributors'
@@ -107,7 +109,13 @@
                 bounds.push([store.lat, store.lng]);
             });
 
-            map.fitBounds(bounds, { padding: [30, 30] });
+            if (stores.length === 1) {
+                // Zoom fisso se un solo punto
+                map.setView([stores[0].lat, stores[0].lng], 12);
+            } else {
+                // Fit bounds per più punti
+                map.fitBounds(bounds, { padding: [30, 30] });
+            }
         }
 
         initMap();
