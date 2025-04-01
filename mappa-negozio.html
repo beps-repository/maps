@@ -30,8 +30,9 @@
 
         function getStoreIdsFromURL() {
             const params = new URLSearchParams(window.location.search);
-            const idsParam = params.get("store_ids");
-            return idsParam ? idsParam.split(",").map(id => id.trim()) : [];
+            const raw = params.get("store_ids") || params.get("store_id");
+            if (!raw) return [];
+            return raw.split(",").map(id => id.trim());
         }
 
         function parseCSV(csvText) {
@@ -62,7 +63,7 @@
 
             return rows
                 .slice(1)
-                .filter(row => storeIds.includes(row[codAmastyIndex]))
+                .filter(row => storeIds.includes((row[codAmastyIndex] || "").trim()))
                 .map(row => ({
                     lat: parseFloat(row[latIndex]),
                     lng: parseFloat(row[lngIndex]),
@@ -74,7 +75,7 @@
         async function initMap() {
             const storeIds = getStoreIdsFromURL();
             if (storeIds.length === 0) {
-                console.error("Nessun store_ids specificato.");
+                console.error("Nessun store_id o store_ids specificato.");
                 return;
             }
 
