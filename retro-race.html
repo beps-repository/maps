@@ -240,25 +240,49 @@
     .pixel-car.blue { background: #00f; border-color: #004; }
     .pixel-car.green { background: #0f0; border-color: #040; }
     .pixel-car.yellow { background: #ff0; border-color: #880; }
+
+
+    @media (max-width: 400px) {
+  #game {
+    transform: scale(0.9);
+    transform-origin: top center;
+  }
+
+  .button {
+    font-size: 8px;
+    padding: 8px 14px;
+  }
+
+  #mobileControls .button {
+    font-size: 12px;
+  }
+}
+
   </style>
 </head>
 <body>
-  <div id="game">
-    <div id="startScreen" style="position:absolute; width:100%; height:100%; background:#000c; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10;">
-      <h1 style="font-size: 16px; margin-bottom: 20px;">RETRO RACE</h1>
-      <p style="font-size: 10px; margin-bottom: 20px;">Choose Vehicle</p>
-      <button class="button" onclick="selectVehicle('car')" style="margin-bottom: 10px;">🚗 Car</button>
-      <button class="button" onclick="selectVehicle('moto')">🏍️ Moto</button>
-    </div>
-    <div id="gameOverScreen">
-      <h2>GAME OVER</h2>
-      <p>SCORE: <span id="finalScore">0</span></p>
-      <button class="button" onclick="location.reload()">RESTART</button>
-    </div>
-    <div class="road-bg"></div>
-    <div id="score">SCORE: 0</div>
-    <div id="player"></div>
-  </div>
+    <div id="game">
+        <div id="startScreen" style="position:absolute; width:100%; height:100%; background:#000c; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10;">
+          <h1 style="font-size: 16px; margin-bottom: 20px;">RETRO RACE</h1>
+          <p style="font-size: 10px; margin-bottom: 20px;">Choose Vehicle</p>
+          <button class="button" onclick="selectVehicle('car')" style="margin-bottom: 10px;">🚗 Car</button>
+          <button class="button" onclick="selectVehicle('moto')">🏍️ Moto</button>
+        </div>
+        <div id="gameOverScreen">
+          <h2>GAME OVER</h2>
+          <p>SCORE: <span id="finalScore">0</span></p>
+          <button class="button" onclick="location.reload()">RESTART</button>
+        </div>
+        <div class="road-bg"></div>
+        <div id="score">SCORE: 0</div>
+        <div id="player"></div>
+      </div>
+    
+      <!-- 👇 Pulsanti mobile -->
+      <div id="mobileControls" style="display:none; margin-top:10px; text-align:center;">
+        <button class="button" style="width: 80px;" onclick="simulateKey('ArrowLeft')">←</button>
+        <button class="button" style="width: 80px;" onclick="simulateKey('ArrowRight')">→</button>
+      </div>
 
   <script>
     const player = document.getElementById('player');
@@ -444,6 +468,18 @@ else {
       finalScoreText.textContent = score;
       gameOverScreen.style.display = 'flex';
     }
+
+     // Aggiunta: simulazione dei tasti con i pulsanti mobile
+     function simulateKey(key) {
+      movePlayer({ key });
+    }
+
+    // Aggiunta: mostra i controlli su schermi piccoli
+    window.addEventListener('load', () => {
+      if (window.innerWidth <= 600) {
+        document.getElementById('mobileControls').style.display = 'block';
+      }
+    });
   </script>
 </body>
 </html>
