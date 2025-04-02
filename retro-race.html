@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Retro Race PixelArt</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: black;
+      color: lime;
+      font-family: 'Press Start 2P', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #game {
+      width: 360px;
+      height: 500px;
+      background: linear-gradient(to right, #050 30px, #444 30px, #444 330px, #050 330px);
+      position: relative;
+      overflow: hidden;
+      border: 4px solid lime;
+    }
+    .road-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 200%;
+      background: repeating-linear-gradient(to bottom, #050 0px, #050 10px, #060 10px, #060 20px);
+      z-index: -1;
+      animation: scrollBg 2s linear infinite;
+    }
+    @keyframes scrollBg {
+      from { transform: translateY(0); }
+      to { transform: translateY(-50%); }
+    }
+    .button {
+      background: lime;
+      color: black;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 10px;
+      z-index: 5;
+    }
+    #startScreen {
+      display: flex;
+    }
+    #gameOverScreen {
+      position:absolute;
+      width:100%;
+      height:100%;
+      background:#000c;
+      display:none;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      z-index: 10;
+    }
+    .road-line {
+      position: absolute;
+      width: 6px;
+      height: 30px;
+      background: white;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: moveLine 1s linear infinite;
+      z-index: 1;
+    }
+    @keyframes moveLine {
+      0% { top: -30px; }
+      100% { top: 500px; }
+    }
+    .tree {
+      position: absolute;
+      width: 16px;
+      height: 40px;
+      top: -40px;
+      animation: moveTree 3s linear forwards;
+      z-index: 2;
+    }
+    .tree .leaves {
+      width: 16px;
+      height: 28px;
+      background: green;
+      border-radius: 50%;
+      animation: treeWiggle 0.4s infinite alternate;
+    }
+    .tree .trunk {
+      width: 4px;
+      height: 12px;
+      background: #663300;
+      margin: 0 auto;
+    }
+    @keyframes moveTree {
+      0% { top: -40px; }
+      100% { top: 550px; }
+    }
+    @keyframes treeWiggle {
+      from { transform: translateX(0); }
+      to { transform: translateX(1px); }
+    }
+    .enemy {
+      position: absolute;
+      top: -60px;
+      animation: moveEnemy 3s linear forwards;
+      z-index: 3;
+    }
+    @keyframes moveEnemy {
+      0% { top: -60px; }
+      100% { top: 550px; }
+    }
+    #player {
+      position: absolute;
+      bottom: 10px;
+      left: 160px;
+      z-index: 4;
+    }
+    .pixel-car, .pixel-moto {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 2px solid darkred;
+    }
+    .pixel-car {
+      width: 30px;
+      height: 60px;
+      background: red;
+      border-color: darkred;
+    }
+    .pixel-moto {
+  position: relative;
+  width: 10px;
+  height: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid darkred;
+  border-radius: 2px;
+  margin: 0 auto;
+}
+
+.pixel-moto .handlebar {
+  width: 14px;
+  height: 2px;
+  background: gray;
+  margin-bottom: 1px;
+  margin-top: 2px;
+}
+
+.pixel-moto .light {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background: yellow;
+  border-radius: 50%;
+  box-shadow: 0 0 6px yellow;
+}
+
+.pixel-moto .body {
+  width: 6px;
+  height: 20px;
+  background: red; /* default per il player */
+  border: 1px solid #800;
+}
+
+.pixel-moto .wheels {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.pixel-moto .wheel {
+  width: 4px;
+  height: 4px;
+  background: black;
+  border-radius: 50%;
+}
+
+.pixel-moto.blue .body { background: #00f; border-color: #004; }
+.pixel-moto.green .body { background: #0f0; border-color: #040; }
+.pixel-moto.yellow .body { background: #ff0; border-color: #880; }
+
+    @keyframes flicker {
+      from { box-shadow: 0 0 2px #f00; }
+      to { box-shadow: 0 0 6px #f00; }
+    }
+    .pixel-car .stripe {
+      width: 80%;
+      height: 6px;
+      background: white;
+      margin: 1px 0;
+    }
+    .pixel-car .roof,
+    .pixel-car .hood {
+      width: 80%;
+      height: 6px;
+      background: #aa0000;
+      margin: 1px 0;
+    }
+    .pixel-car .grill {
+      width: 80%;
+      height: 6px;
+      background: black;
+      margin: 1px 0;
+    }
+    .pixel-car .wheels {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 2px;
+    }
+    .pixel-car .wheel {
+      width: 6px;
+      height: 6px;
+      background: black;
+    }
+    .pixel-car .window {
+      width: 60%;
+      height: 4px;
+      background: #fff;
+      margin: 1px 0;
+    }
+    .pixel-car.red { background: red; border-color: darkred; }
+    .pixel-car.blue { background: #00f; border-color: #004; }
+    .pixel-car.green { background: #0f0; border-color: #040; }
+    .pixel-car.yellow { background: #ff0; border-color: #880; }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="startScreen" style="position:absolute; width:100%; height:100%; background:#000c; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10;">
+      <h1 style="font-size: 16px; margin-bottom: 20px;">RETRO RACE</h1>
+      <p style="font-size: 10px; margin-bottom: 20px;">Choose Vehicle</p>
+      <button class="button" onclick="selectVehicle('car')" style="margin-bottom: 10px;">🚗 Car</button>
+      <button class="button" onclick="selectVehicle('moto')">🏍️ Moto</button>
+    </div>
+    <div id="gameOverScreen">
+      <h2>GAME OVER</h2>
+      <p>SCORE: <span id="finalScore">0</span></p>
+      <button class="button" onclick="location.reload()">RESTART</button>
+    </div>
+    <div class="road-bg"></div>
+    <div id="score">SCORE: 0</div>
+    <div id="player"></div>
+  </div>
+
+  <script>
+    const player = document.getElementById('player');
+    const scoreText = document.getElementById('score');
+    const startScreen = document.getElementById('startScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const finalScoreText = document.getElementById('finalScore');
+    const game = document.getElementById('game');
+
+    let playerType = '';
+    let position = 130;
+    let score = 0;
+    let gameRunning = false;
+    let spawnRate = 1200;
+    let enemyInterval;
+    let intervals = [];
+
+    function selectVehicle(type) {
+      playerType = type;
+      startScreen.style.display = 'none';
+      startGame();
+    }
+
+    function startGame() {
+      gameRunning = true;
+      player.style.left = position + 'px';
+      renderPlayer();
+      document.addEventListener('keydown', movePlayer);
+      intervals.push(setInterval(spawnLine, 200));
+      intervals.push(setInterval(spawnTree, 800));
+      spawnEnemies();
+      intervals.push(setInterval(() => {
+  if (score % 20 === 0 && spawnRate > 400) {
+    spawnRate -= 100;
+    clearInterval(enemyInterval);
+    spawnEnemies();
+  }
+}, 1000));
+
+      intervals.push(setInterval(updateScore, 300));
+    }
+
+    function renderPlayer() {
+  if (playerType === 'car') {
+    player.innerHTML = `
+      <div class="pixel-car red">
+        <div class="wheels">
+          <div class="wheel"></div>
+          <div class="wheel"></div>
+        </div>
+        <div class="grill"></div>
+        <div class="stripe"></div>
+        <div class="hood"></div>
+        <div class="stripe"></div>
+        <div class="roof window"></div>
+      </div>`;
+  } else {
+    player.innerHTML = `<div class="pixel-moto player-moto">
+      <div class="handlebar"></div>
+      <div class="light"></div>
+      <div class="body"></div>
+      <div class="wheels">
+        <div class="wheel"></div>
+        <div class="wheel"></div>
+      </div>
+    </div>`;
+  }
+}
+
+
+    function movePlayer(e) {
+      if (!gameRunning) return;
+      if (e.key === 'ArrowLeft' && position > 40) position -= 30;
+      if (e.key === 'ArrowRight' && position < 290) position += 30;
+      player.style.left = position + 'px';
+    }
+
+    function spawnLine() {
+      const line = document.createElement('div');
+      line.classList.add('road-line');
+      game.appendChild(line);
+      setTimeout(() => line.remove(), 1200);
+    }
+
+    function spawnTree() {
+      const tree = document.createElement('div');
+      tree.classList.add('tree');
+      const side = Math.random() < 0.5 ? 10 : 334;
+      tree.style.left = side + 'px';
+      tree.innerHTML = '<div class="leaves"></div><div class="trunk"></div>';
+      game.appendChild(tree);
+
+      const interval = setInterval(() => {
+        const tTop = tree.offsetTop;
+        const tLeft = tree.offsetLeft;
+        const tRight = tLeft + tree.offsetWidth;
+        const pLeft = player.offsetLeft;
+        const pRight = pLeft + player.offsetWidth;
+
+        if (tTop > 430 && tTop < 500 && tRight > pLeft && tLeft < pRight) {
+          clearInterval(interval);
+          endGame();
+        }
+        if (tTop > 550) {
+          clearInterval(interval);
+          tree.remove();
+        }
+      }, 50);
+    }
+
+    function spawnEnemies() {
+      enemyInterval = setInterval(() => {
+        const enemy = document.createElement('div');
+        enemy.classList.add('enemy');
+        const lanes = [60, 120, 180, 240];
+        enemy.style.left = lanes[Math.floor(Math.random() * lanes.length)] + 'px';
+
+        const isMoto = Math.random() < 0.3;
+
+        if (isMoto) {
+  const motoColors = ['blue', 'green', 'yellow'];
+  const motoColor = motoColors[Math.floor(Math.random() * motoColors.length)];
+
+  enemy.innerHTML = `<div class="pixel-moto enemy-moto ${motoColor}">
+  <div class="handlebar"></div>
+  <div class="body"></div>
+  <div class="wheels">
+    <div class="wheel"></div>
+    <div class="wheel"></div>
+  </div>
+  <div class="light" style="top: auto; bottom: 2px;"></div>
+</div>`;
+
+}
+else {
+  const carColors = ['blue', 'green', 'yellow'];
+  const carColor = carColors[Math.floor(Math.random() * carColors.length)];
+  enemy.innerHTML = `<div class="pixel-car ${carColor}">
+    <div class="roof window"></div>
+    <div class="stripe"></div>
+    <div class="hood"></div>
+    <div class="stripe"></div>
+    <div class="grill"></div>
+    <div class="wheels">
+      <div class="wheel"></div>
+      <div class="wheel"></div>
+    </div>
+  </div>`;
+}
+
+
+        game.appendChild(enemy);
+
+        const interval = setInterval(() => {
+          const eTop = enemy.offsetTop;
+          const eLeft = enemy.offsetLeft;
+          const eRight = eLeft + enemy.offsetWidth;
+          const pLeft = player.offsetLeft;
+          const pRight = pLeft + player.offsetWidth;
+
+          if (eTop > 430 && eTop < 500 && eRight > pLeft && eLeft < pRight) {
+            clearInterval(interval);
+            endGame();
+          }
+          if (eTop > 550) {
+            clearInterval(interval);
+            enemy.remove();
+          }
+        }, 50);
+      }, spawnRate);
+    }
+
+    function updateScore() {
+      score++;
+      scoreText.textContent = 'SCORE: ' + score;
+    }
+
+    function endGame() {
+      if (!gameRunning) return;
+      gameRunning = false;
+      intervals.forEach(clearInterval);
+      clearInterval(enemyInterval);
+      finalScoreText.textContent = score;
+      gameOverScreen.style.display = 'flex';
+    }
+  </script>
+</body>
+</html>
