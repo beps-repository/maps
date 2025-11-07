@@ -70,7 +70,7 @@
 
     <div id="map"></div>
     <script>
-        const allowedDomains = ["www.beps.it", "sviluppo.beps.it", "www.axo.com"];
+        const allowedDomains = ["www.axo.com"];
 
 if (!allowedDomains.some(domain => document.referrer.includes(domain))) {
     document.body.innerHTML = "<h1>Accesso Negato</h1>";
@@ -126,7 +126,7 @@ if (!allowedDomains.some(domain => document.referrer.includes(domain))) {
         }
 
         const map = L.map('map').setView([45.5, 10.5], 6.8);
-        L.tileLayer('https://tileserver.beps.it/styles/basic-preview/{z}/{x}/{y}.png', {
+        L.tileLayer('https://maps.triosrl.com/styles/basic-preview/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
