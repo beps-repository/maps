@@ -60,25 +60,35 @@
 <body>
 
     <div id="map"></div>
-    <script>
-    
+<script>
+  // Domini ammessi come REFERRER quando la pagina è aperta direttamente
+  const allowedDomains = [
+    "beps.it",
+    "z3prqq-sviluppo-stag.devgate01.com"
+  ];
 
-// Controllo se la pagina è direttamente aperta (NON in iframe)
-const isDirectAccess = window.location === window.parent.location;
+  // Controllo se la pagina è direttamente aperta (NON in iframe)
+  const isDirectAccess = (window.location === window.parent.location);
 
-// Controllo se il referrer è valido
-const isAllowedReferrer = document.referrer && allowedDomains.some(domain => document.referrer.includes(domain));
+  // Controllo se il referrer è valido
+  const isAllowedReferrer =
+    document.referrer &&
+    allowedDomains.some(domain => document.referrer.includes(domain));
 
-// Controllo se l'iframe è caricato dentro Google Sites
-const isGoogleSites = window.location !== window.parent.location && window.parent !== window;
+  // Controllo se l'iframe è caricato dentro Google Sites (informativo, non blocca)
+  const isGoogleSites =
+    (window.location !== window.parent.location) && (window.parent !== window);
 
-// Se è accesso diretto e il referrer non è consentito, blocca l’accesso
-if (isDirectAccess && !isAllowedReferrer) {
+  // Se è accesso diretto e il referrer non è consentito, blocca l’accesso
+  if (isDirectAccess && !isAllowedReferrer) {
     document.body.innerHTML = "<h1>Accesso Negato</h1>";
-} else {
-    console.log("Accesso consentito da:", document.referrer || "Iframe senza referrer");
-}
-    </script>
+  } else {
+    console.log("Accesso consentito da:", document.referrer || "Iframe senza referrer", {
+      isDirectAccess,
+      isGoogleSites
+    });
+  }
+</script>
 
     <script>
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
