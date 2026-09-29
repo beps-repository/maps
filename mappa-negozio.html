@@ -10,21 +10,46 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <style>
-        #map { width: 100%; height: 500px; }
+        body { margin: 0; }
+        #map-wrapper { position: relative; width: 100%; height: 500px; }
+        #map { width: 100%; height: 100%; }
         .leaflet-popup-content-wrapper { border-radius: 0px !important; }
         .leaflet-attribution-flag { display: none !important; }
+
+        /* Punti vendita non selezionati: stesso logo, in grigio e leggermente trasparente */
+        .marker-grey { filter: grayscale(1) opacity(0.6); }
+
+        /* Avviso "clicca per usare lo zoom" */
+        #map-hint {
+            position: absolute;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font: 14px sans-serif;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        #map-hint.show { opacity: 1; }
     </style>
 </head>
 <body>
-    <div id="map"></div>
+    <div id="map-wrapper">
+        <div id="map"></div>
+        <div id="map-hint">Clicca sulla mappa per usare lo zoom con la rotellina</div>
+    </div>
 
     <script>
         const allowedDomains = ["www.beps.it", "sviluppo.beps.it", "www.axo.com", "sites.google.com", "new.beps.it", "local.beps.it"];
 
         if (!allowedDomains.some(domain => document.referrer.includes(domain))) {
             document.body.innerHTML = "<h1>Accesso Negato</h1>";
-            }
-
+        }
     </script>
 
     <script>
@@ -53,7 +78,8 @@
             return rows;
         }
 
-        async function fetchSelectedStores(storeIds) {
+        // Restituisce i punti vendita selezionati e tutti gli altri (con coordinate valide)
+        async function fetchStores(storeIds) {
             const response = await fetch(`${PROXY_URL}?type=csv`);
             const csvText = await response.text();
             const rows = parseCSV(csvText);
@@ -64,15 +90,20 @@
             const lngIndex = 39;
             const nameIndex = 5;
 
-            return rows
+            const all = rows
                 .slice(1)
-                .filter(row => storeIds.includes((row[codAmastyIndex] || "").trim()))
                 .map(row => ({
+                    id: (row[codAmastyIndex] || "").trim(),
                     lat: parseFloat(row[latIndex]),
                     lng: parseFloat(row[lngIndex]),
                     name: row[nameIndex] || "Punto Vendita"
                 }))
-                .filter(store => !isNaN(store.lat) && !isNaN(store.lng));
+                .filter(store => store.id && !isNaN(store.lat) && !isNaN(store.lng));
+
+            return {
+                selected: all.filter(store => storeIds.includes(store.id)),
+                others: all.filter(store => !storeIds.includes(store.id))
+            };
         }
 
         async function initMap() {
@@ -82,31 +113,66 @@
                 return;
             }
 
-            const stores = await fetchSelectedStores(storeIds);
+            const { selected: stores, others } = await fetchStores(storeIds);
             if (stores.length === 0) {
                 console.error("Nessun punto vendita trovato.");
                 return;
             }
 
-            // Mappa: inizializzazione temporanea
-            const map = L.map("map");
+            // Mappa: lo zoom con la rotellina parte disattivato,
+            // così non interferisce con lo scroll della pagina che contiene l'iframe
+            const map = L.map("map", {
+                scrollWheelZoom: false
+            });
+
+            // Zoom con la rotellina attivo solo dopo un click sulla mappa
+            map.on("click", () => map.scrollWheelZoom.enable());
+
+            // Quando il mouse esce dalla mappa, la rotellina torna a scrollare la pagina
+            map.on("mouseout", () => map.scrollWheelZoom.disable());
+
+            // Avviso temporaneo se l'utente prova a usare la rotellina senza aver cliccato
+            const hint = document.getElementById("map-hint");
+            let hintTimer;
+            map.getContainer().addEventListener("wheel", () => {
+                if (!map.scrollWheelZoom.enabled()) {
+                    hint.classList.add("show");
+                    clearTimeout(hintTimer);
+                    hintTimer = setTimeout(() => hint.classList.remove("show"), 1200);
+                }
+            }, { passive: true });
 
             L.tileLayer(TILESERVER_URL, {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
+            const iconOptions = {
+                iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+                popupAnchor: [0, -40]
+            };
+
+            // Icona colorata per i punti vendita selezionati
+            const selectedIcon = L.icon(iconOptions);
+
+            // Icona grigia (stesso logo, desaturato via CSS) per gli altri punti vendita
+            const greyIcon = L.icon({ ...iconOptions, className: "marker-grey" });
+
+            // Prima gli altri punti vendita, sotto a quelli selezionati
+            others.forEach(store => {
+                L.marker([store.lat, store.lng], { icon: greyIcon, zIndexOffset: -1000 })
+                    .addTo(map)
+                    .bindPopup(`<b>${store.name}</b>`);
+            });
+
+            // Poi quelli selezionati, sempre in primo piano
             const bounds = [];
 
             stores.forEach(store => {
-                const customIcon = L.icon({
-                    iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 40],
-                    popupAnchor: [0, -40]
-                });
-
-                L.marker([store.lat, store.lng], { icon: customIcon }).addTo(map)
+                L.marker([store.lat, store.lng], { icon: selectedIcon, zIndexOffset: 1000 })
+                    .addTo(map)
                     .bindPopup(`<b>${store.name}</b>`);
 
                 bounds.push([store.lat, store.lng]);
