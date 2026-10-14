@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mappa con Cluster - MapLibre</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        #map { width: 100%; height: 600px; }
+        .mapboxgl-popup-content {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            font-size: 14px;
+            border-radius: 0 !important;
+        }
+        .scopri-di-piu-btn {
+            background-color: #e10b17;
+            color: white !important;
+            padding: 6px 10px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 0px;
+            transition: background-color 0.3s ease;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .scopri-di-piu-btn:hover {
+            background-color: #c00d15;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+
+        async function fetchStoreData() {
+            try {
+                const response = await fetch(`${PROXY_URL}?type=csv`);
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
+                }
+                const csvText = await response.text();
+                
+                function parseCSV(csvText) {
+                    const rows = [];
+                    const lines = csvText.split("\n");
+                    lines.forEach((line) => {
+                        const regex = /(?:,|^)(?:("[^"]*")|([^",]*))/g;
+                        const row = [];
+                        let match;
+                        while ((match = regex.exec(line)) !== null) {
+                            row.push(match[1] || match[2]);
+                        }
+                        rows.push(row);
+                    });
+                    return rows;
+                }
+
+                const rows = parseCSV(csvText);
+                if (rows.length < 2) {
+                    console.error("Errore: Il CSV ricevuto non contiene dati.");
+                    return { type: "FeatureCollection", features: [] };
+                }
+
+                return {
+                    type: "FeatureCollection",
+                    features: rows.slice(1).map(cols => ({
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [parseFloat(cols[39]?.trim()), parseFloat(cols[38]?.trim())]
+                        },
+                        properties: {
+                            name: cols[5]?.trim() || "Sconosciuto",
+                            region: cols[42]?.trim() || "Sconosciuto",
+                            link: cols[41]?.trim() || "#",
+                            include: cols[40]?.trim() === "1"
+                        }
+                    })).filter(store => store.properties.include && !isNaN(store.geometry.coordinates[0]) && !isNaN(store.geometry.coordinates[1]))
+                };
+            } catch (error) {
+                console.error("Errore nel caricamento dei dati:", error);
+                return { type: "FeatureCollection", features: [] };
+            }
+        }
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: "https://tileserver.beps.it/styles/basic-preview/style.json",
+            center: [10, 50],
+            zoom: 6
+        });
+
+        map.on('style.load', function () {
+            map.getStyle().layers.forEach(layer => {
+                if (layer.layout && layer.layout['text-font']) {
+                    console.log(`Modifico font per il layer: ${layer.id}`);
+                    map.setLayoutProperty(layer.id, 'text-font', ['Noto Sans Regular']);
+                }
+            });
+        });
+
+        map.on('load', async () => {
+            try {
+                const stores = await fetchStoreData();
+                if (!stores.features.length) {
+                    console.warn("Nessun negozio trovato nel dataset ricevuto.");
+                    return;
+                }
+                
+                map.addSource('stores', {
+                    type: 'geojson',
+                    data: stores,
+                    cluster: true,
+                    clusterMaxZoom: 14,
+                    clusterRadius: 50
+                });
+
+                map.loadImage('https://beps-repository.github.io/assets-icons/favicon.png', (error, image) => {
+                    if (!error) map.addImage('custom-marker', image);
+                });
+
+                map.loadImage('https://beps-repository.github.io/assets-icons/cluster-marker.png', (error, image) => {
+                    if (!error) map.addImage('custom-cluster', image);
+                });
+
+                map.addLayer({
+                    id: 'clusters',
+                    type: 'symbol',
+                    source: 'stores',
+                    filter: ['has', 'point_count'],
+                    layout: {
+                        'icon-image': 'custom-cluster',
+                        'icon-size': 1,
+                        'text-field': '{point_count_abbreviated}',
+                        'text-size': 14
+                    },
+                    paint: {
+                        'text-color': '#fff'
+                    }
+                });
+
+                map.addLayer({
+                    id: 'unclustered-point',
+                    type: 'symbol',
+                    source: 'stores',
+                    filter: ['!', ['has', 'point_count']],
+                    layout: {
+                        'icon-image': 'custom-marker',
+                        'icon-size': 1
+                    }
+                });
+
+                if (stores.features.length > 0) {
+                    const bounds = new maplibregl.LngLatBounds();
+                    stores.features.forEach((feature) => bounds.extend(feature.geometry.coordinates));
+                    map.fitBounds(bounds, { padding: 50 });
+                }
+            } catch (error) {
+                console.error("Errore generale:", error);
+            }
+        });
+    </script>
+</body>
+</html>
