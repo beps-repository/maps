@@ -80,12 +80,13 @@
     </script>
 
     <script>
-        // Versione 22-10-26 - centraggio mappa da parte del sito (parametri URL + postMessage)
+        // Versione 22-10-26b - centraggio mappa da parte del sito (parametri URL + postMessage)
+        //                      + filtro dei marker per codice negozio (messaggio filterMarkers)
         if (accessAllowed) {
 
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
 
-        // Origin (schema + dominio) da cui accettiamo i messaggi di centraggio.
+        // Origin (schema + dominio) da cui accettiamo i messaggi dal sito.
         // Per i test su new.beps.it basta che ci sia in questa lista.
         const ALLOWED_ORIGINS = [
             "https://www.beps.it",
@@ -113,6 +114,13 @@
         const DEFAULT_ZOOM = 6.8;
         const DEFAULT_USER_ZOOM = 11;
 
+        // Intestazione della colonna del CSV con il codice negozio (stesso valore del
+        // "Codice Store" dell'attributo location in Amasty: TV1, PD, VR2...).
+        // Si cerca per NOME dell'intestazione, non per indice, cosi' non si rompe se
+        // qualcuno sposta le colonne del foglio. Confronto esatto: "cod. negozio_bis"
+        // e "cod. negozio ga4" sono colonne diverse e non vanno confuse con questa.
+        const CODE_COLUMN_HEADER = "cod. negozio";
+
         function validCoords(lat, lon) {
             return typeof lat === "number" && typeof lon === "number" &&
                    isFinite(lat) && isFinite(lon) &&
@@ -125,10 +133,27 @@
             return Math.min(18, Math.max(3, z));
         }
 
+        // Codici confrontati come stringhe, senza spazi e in maiuscolo: "tv1 " == "TV1".
+        function normalizeCode(value) {
+            return String(value == null ? "" : value).trim().toUpperCase();
+        }
+
         // Stato: se il sito ha gia' indicato una posizione utente, il fitBounds
         // finale del caricamento marker NON deve sovrascriverla.
         let userLocated = false;
         let userMarker = null;
+
+        // Stato del filtro marker.
+        //   activeFilter = null  -> tutti i negozi visibili
+        //   activeFilter = Set   -> solo i negozi con questi codici (Set vuoto = nessuno)
+        // Lo stato vale anche se il messaggio arriva prima che il CSV sia caricato:
+        // viene applicato appena i marker esistono.
+        let activeFilter = null;
+        let codeColumnFound = true;   // se false (colonna assente) il filtro viene ignorato
+        let dataLoaded = false;
+        let pendingAck = null;        // destinatario della conferma, se il filtro e' arrivato prima del CSV
+        let clusterGroup = null;
+        let markerEntries = [];       // [{ store, marker }]
 
         // --- Posizione iniziale da parametri URL (?lat=..&lon=..&zoom=..) ---
         const urlParams = new URLSearchParams(window.location.search);
@@ -166,13 +191,22 @@
                     return [];
                 }
 
+                // Colonna del codice negozio, cercata per intestazione.
+                const header = rows[0].map(h => String(h || "").trim().toLowerCase());
+                const codeIdx = header.indexOf(CODE_COLUMN_HEADER);
+                codeColumnFound = codeIdx !== -1;
+                if (!codeColumnFound) {
+                    console.error(`Colonna "${CODE_COLUMN_HEADER}" non trovata nel CSV: il filtro filterMarkers viene ignorato.`);
+                }
+
                 return rows.slice(1).map(cols => ({
                     name: cols[5]?.trim() || "Sconosciuto",
                     lat: parseFloat(cols[38]?.trim()),
                     lng: parseFloat(cols[39]?.trim()),
                     link: cols[41]?.trim() || "#",
                     include: cols[40]?.trim() === "1",
-                    region: cols[42]?.trim() || "Sconosciuto"
+                    region: cols[42]?.trim() || "Sconosciuto",
+                    code: codeColumnFound ? normalizeCode(cols[codeIdx]) : ""
                 })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
             } catch (error) {
                 console.error("Errore nel caricamento dei dati:", error);
@@ -212,10 +246,66 @@
             placeUserMarker(initLat, initLon);
         }
 
+        // --- Filtro marker ---
+        function visibleEntries() {
+            if (!activeFilter || !codeColumnFound) return markerEntries;
+            return markerEntries.filter(e => activeFilter.has(e.store.code));
+        }
+
+        // Ricostruisce il gruppo dei cluster con i soli marker visibili.
+        // Non si tolgono i singoli marker dalla mappa: con markercluster si lavora sul gruppo.
+        function applyMarkerFilter() {
+            if (!clusterGroup) return 0;
+            map.closePopup();
+            clusterGroup.clearLayers();
+            const visible = visibleEntries();
+            clusterGroup.addLayers(visible.map(e => e.marker));
+            return visible.length;
+        }
+
+        // Inquadra i negozi visibili (tutti, o solo quelli del filtro).
+        // Con un solo negozio lo zoom e' limitato a 12, come in mappa-negozio.html.
+        // Se il filtro non lascia nessun negozio la vista non si muove.
+        function fitVisibleStores() {
+            const stores = visibleEntries().map(e => e.store);
+            if (stores.length > 0) {
+                const group = L.featureGroup(stores.map(s => L.marker([s.lat, s.lng])));
+                map.fitBounds(group.getBounds(), { padding: [30, 30], maxZoom: 12 });
+            } else if (!activeFilter) {
+                map.setView([45.4642, 9.1900], 6);
+            }
+        }
+
+        // Codici ricevuti dal sito che non esistono nel CSV: aiuta a scoprire
+        // un disallineamento tra i Codice Store di Magento e la colonna del foglio.
+        function warnUnknownCodes() {
+            if (!activeFilter || !codeColumnFound) return;
+            const known = new Set(markerEntries.map(e => e.store.code));
+            const unknown = [...activeFilter].filter(c => !known.has(c));
+            if (unknown.length > 0) {
+                console.warn("filterMarkers: codici non presenti nel CSV (ignorati):", unknown.join(", "));
+            }
+        }
+
+        function sendFilterAck(reply, count) {
+            if (!reply || !reply.source) return;
+            try {
+                reply.source.postMessage(
+                    { type: "markersFiltered", count: count, total: markerEntries.length },
+                    reply.origin
+                );
+            } catch (e) { /* finestra chiusa o non raggiungibile */ }
+        }
+
         // --- Messaggi dal sito (postMessage) ---
         // Formati accettati:
         //   { type: "setUserLocation", lat: 45.67, lon: 12.24, zoom: 11 }  -> centra la mappa sull'utente
         //   { type: "clearUserLocation" }                                   -> torna alla vista con tutti i negozi
+        //   { type: "filterMarkers", codes: ["TV1", "PD"] }                 -> mostra solo questi negozi
+        //   { type: "filterMarkers", codes: null }                          -> mostra tutti i negozi
+        //   (opzionale) fit: false                                          -> filtra senza spostare la mappa
+        // Risposta all'invio di filterMarkers:
+        //   { type: "markersFiltered", count: <marker visibili>, total: <marker totali> }
         window.addEventListener("message", (event) => {
             if (!ALLOWED_ORIGINS.includes(event.origin)) return;
 
@@ -240,7 +330,34 @@
                     map.removeLayer(userMarker);
                     userMarker = null;
                 }
-                fitAllStores();
+                fitVisibleStores();
+            }
+
+            if (data.type === "filterMarkers") {
+                if (data.codes === null) {
+                    activeFilter = null;
+                } else if (Array.isArray(data.codes)) {
+                    activeFilter = new Set(data.codes.map(normalizeCode).filter(Boolean));
+                } else {
+                    console.warn("filterMarkers ignorato: 'codes' deve essere un array o null", data);
+                    return;
+                }
+
+                const reply = { source: event.source, origin: event.origin };
+                if (!dataLoaded) {
+                    // I marker non esistono ancora: il filtro e' gia' salvato,
+                    // verra' applicato (e confermato) a fine caricamento.
+                    pendingAck = reply;
+                    return;
+                }
+
+                const count = applyMarkerFilter();
+                warnUnknownCodes();
+                // Se l'utente e' stato localizzato non spostiamo la mappa.
+                if (data.fit !== false && !userLocated) {
+                    fitVisibleStores();
+                }
+                sendFilterAck(reply, count);
             }
         });
 
@@ -259,21 +376,9 @@
             window.parent.postMessage(eventData, PARENT_ORIGIN);
         }
 
-        let loadedStores = [];
-
-        function fitAllStores() {
-            if (loadedStores.length > 0) {
-                const group = L.featureGroup(loadedStores.map(s => L.marker([s.lat, s.lng])));
-                map.fitBounds(group.getBounds());
-            } else {
-                map.setView([45.4642, 9.1900], 6);
-            }
-        }
-
         async function loadMarkers() {
             const stores = await fetchStoreData();
-            loadedStores = stores;
-            const markers = L.markerClusterGroup({
+            clusterGroup = L.markerClusterGroup({
                 iconCreateFunction: cluster => L.divIcon({
                     html: `<div class='custom-cluster'>${cluster.getChildCount()}</div>`,
                     className: 'custom-cluster',
@@ -281,7 +386,7 @@
                 })
             });
 
-            stores.forEach(store => {
+            markerEntries = stores.map(store => {
                 const customIcon = L.icon({
                     iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
                     iconSize: [40, 40]
@@ -295,15 +400,24 @@
                     `)
                     .on('click', () => trackGA4Click(store.name, store.region));
 
-                markers.addLayer(marker);
+                return { store, marker };
             });
 
-            map.addLayer(markers);
+            // Se un filtro e' arrivato prima del CSV viene applicato qui.
+            clusterGroup.addLayers(visibleEntries().map(e => e.marker));
+            map.addLayer(clusterGroup);
+            dataLoaded = true;
 
             // Se il sito ha gia' centrato la mappa sull'utente (URL o postMessage),
             // non la riportiamo sulla vista "tutta Italia".
             if (!userLocated) {
-                fitAllStores();
+                fitVisibleStores();
+            }
+
+            if (pendingAck) {
+                warnUnknownCodes();
+                sendFilterAck(pendingAck, visibleEntries().length);
+                pendingAck = null;
             }
         }
 
