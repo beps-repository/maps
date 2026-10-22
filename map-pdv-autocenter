@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mappa con Cluster</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+    <style>
+        #map {
+            width: 100%;
+            height: 600px;
+        }
+        .custom-cluster {
+            background: #e10b17;
+            color: white;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .custom-marker img {
+            width: 40px;
+            height: 40px;
+        }
+        .leaflet-attribution-flag {
+            display: none !important;
+        }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            border-radius: 0 !important;
+        }
+        .scopri-di-piu-btn {
+            display: inline-block;
+            background-color: #e10b17;
+            color: white !important;
+            padding: 2px 6px;
+            text-decoration: none;
+            font-weight: bold;
+            text-align: center;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        .scopri-di-piu-btn:hover {
+            background-color: #c00d15;
+        }
+        .leaflet-overlay-pane path {
+            display: none !important;
+        }
+        /* Marker posizione utente (pallino blu). Si usa un divIcon e non un circleMarker
+           perche' le regole sopra nascondono tutti i path vettoriali di Leaflet. */
+        .user-location-dot {
+            width: 16px;
+            height: 16px;
+            background: #1a73e8;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.35), 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+    <script>
+        const allowedDomains = ["www.beps.it", "sviluppo.beps.it", "www.axo.com", "sites.google.com", "new.beps.it", "local.beps.it", "prod.beps.it", "prod.axo.com"];
+
+        const accessAllowed = allowedDomains.some(domain => document.referrer.includes(domain));
+        if (!accessAllowed) {
+            document.body.innerHTML = "<h1>Accesso Negato</h1>";
+        }
+    </script>
+
+    <script>
+        // Versione 22-10-26 - centraggio mappa da parte del sito (parametri URL + postMessage)
+        if (accessAllowed) {
+
+        const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
+
+        // Origin (schema + dominio) da cui accettiamo i messaggi di centraggio.
+        // Per i test su new.beps.it basta che ci sia in questa lista.
+        const ALLOWED_ORIGINS = [
+            "https://www.beps.it",
+            "https://new.beps.it",
+            "https://prod.beps.it",
+            "https://sviluppo.beps.it",
+            "https://local.beps.it",
+            "https://www.axo.com",
+            "https://prod.axo.com"
+        ];
+
+        // Origin del sito che ospita l'iframe: serve come destinatario dei messaggi
+        // che mandiamo noi (GA4, mapReady). Prima era fisso su www.beps.it, quindi
+        // su new.beps.it gli eventi GA4 venivano scartati dal browser.
+        function getParentOrigin() {
+            try {
+                const refOrigin = new URL(document.referrer).origin;
+                if (ALLOWED_ORIGINS.includes(refOrigin)) return refOrigin;
+            } catch (e) { /* referrer assente o non valido */ }
+            return "https://www.beps.it";
+        }
+        const PARENT_ORIGIN = getParentOrigin();
+
+        const DEFAULT_CENTER = [45.5, 10.5];
+        const DEFAULT_ZOOM = 6.8;
+        const DEFAULT_USER_ZOOM = 11;
+
+        function validCoords(lat, lon) {
+            return typeof lat === "number" && typeof lon === "number" &&
+                   isFinite(lat) && isFinite(lon) &&
+                   lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+        }
+
+        function cleanZoom(zoom) {
+            const z = parseFloat(zoom);
+            if (!isFinite(z)) return DEFAULT_USER_ZOOM;
+            return Math.min(18, Math.max(3, z));
+        }
+
+        // Stato: se il sito ha gia' indicato una posizione utente, il fitBounds
+        // finale del caricamento marker NON deve sovrascriverla.
+        let userLocated = false;
+        let userMarker = null;
+
+        // --- Posizione iniziale da parametri URL (?lat=..&lon=..&zoom=..) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const initLat = parseFloat(urlParams.get("lat"));
+        const initLon = parseFloat(urlParams.get("lon"));
+        const hasInitial = validCoords(initLat, initLon);
+
+        async function fetchStoreData() {
+            try {
+                const response = await fetch(`${PROXY_URL}?type=csv`);
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP: ${response.status}`);
+                }
+                const csvText = await response.text();
+
+                function parseCSV(csvText) {
+                    const rows = [];
+                    const lines = csvText.split("\n");
+                    lines.forEach((line) => {
+                        const regex = /(?:,|^)(?:"([^"]*)"|([^",]*))/g;
+                        const row = [];
+                        let match;
+                        while ((match = regex.exec(line)) !== null) {
+                            row.push(match[1] || match[2]);
+                        }
+                        rows.push(row);
+                    });
+                    return rows;
+                }
+
+                const rows = parseCSV(csvText);
+
+                if (rows.length < 2) {
+                    console.error("Errore: Il CSV ricevuto non contiene dati.");
+                    return [];
+                }
+
+                return rows.slice(1).map(cols => ({
+                    name: cols[5]?.trim() || "Sconosciuto",
+                    lat: parseFloat(cols[38]?.trim()),
+                    lng: parseFloat(cols[39]?.trim()),
+                    link: cols[41]?.trim() || "#",
+                    include: cols[40]?.trim() === "1",
+                    region: cols[42]?.trim() || "Sconosciuto"
+                })).filter(store => store.include && !isNaN(store.lat) && !isNaN(store.lng));
+            } catch (error) {
+                console.error("Errore nel caricamento dei dati:", error);
+                return [];
+            }
+        }
+
+        const map = L.map('map').setView(
+            hasInitial ? [initLat, initLon] : DEFAULT_CENTER,
+            hasInitial ? cleanZoom(urlParams.get("zoom")) : DEFAULT_ZOOM
+        );
+        L.tileLayer('https://maps.triosrl.com/styles/basic-preview/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        function placeUserMarker(lat, lon) {
+            if (userMarker) {
+                userMarker.setLatLng([lat, lon]);
+            } else {
+                userMarker = L.marker([lat, lon], {
+                    icon: L.divIcon({
+                        className: "",
+                        html: "<div class='user-location-dot'></div>",
+                        iconSize: [22, 22],
+                        iconAnchor: [11, 11]
+                    }),
+                    interactive: false,
+                    keyboard: false,
+                    zIndexOffset: 1000
+                }).addTo(map);
+            }
+        }
+
+        if (hasInitial) {
+            userLocated = true;
+            placeUserMarker(initLat, initLon);
+        }
+
+        // --- Messaggi dal sito (postMessage) ---
+        // Formati accettati:
+        //   { type: "setUserLocation", lat: 45.67, lon: 12.24, zoom: 11 }  -> centra la mappa sull'utente
+        //   { type: "clearUserLocation" }                                   -> torna alla vista con tutti i negozi
+        window.addEventListener("message", (event) => {
+            if (!ALLOWED_ORIGINS.includes(event.origin)) return;
+
+            const data = event.data;
+            if (!data || typeof data !== "object") return;
+
+            if (data.type === "setUserLocation") {
+                const lat = parseFloat(data.lat);
+                const lon = parseFloat(data.lon);
+                if (!validCoords(lat, lon)) {
+                    console.warn("setUserLocation ignorato: coordinate non valide", data);
+                    return;
+                }
+                userLocated = true;
+                placeUserMarker(lat, lon);
+                map.flyTo([lat, lon], cleanZoom(data.zoom), { duration: 1 });
+            }
+
+            if (data.type === "clearUserLocation") {
+                userLocated = false;
+                if (userMarker) {
+                    map.removeLayer(userMarker);
+                    userMarker = null;
+                }
+                fitAllStores();
+            }
+        });
+
+        // Funzione per tracciare eventi GA4
+        function trackGA4Click(store, region) {
+            console.log(`Tracciamento GA4: ${store} - ${region}`);
+
+            const eventData = {
+                event: "store_locator",
+                category: "store_select",
+                action: region,
+                label: store
+            };
+
+            console.log("Evento inviato a Magento:", eventData);
+            window.parent.postMessage(eventData, PARENT_ORIGIN);
+        }
+
+        let loadedStores = [];
+
+        function fitAllStores() {
+            if (loadedStores.length > 0) {
+                const group = L.featureGroup(loadedStores.map(s => L.marker([s.lat, s.lng])));
+                map.fitBounds(group.getBounds());
+            } else {
+                map.setView([45.4642, 9.1900], 6);
+            }
+        }
+
+        async function loadMarkers() {
+            const stores = await fetchStoreData();
+            loadedStores = stores;
+            const markers = L.markerClusterGroup({
+                iconCreateFunction: cluster => L.divIcon({
+                    html: `<div class='custom-cluster'>${cluster.getChildCount()}</div>`,
+                    className: 'custom-cluster',
+                    iconSize: [45, 45]
+                })
+            });
+
+            stores.forEach(store => {
+                const customIcon = L.icon({
+                    iconUrl: "https://www.beps.it/pub/media/beps/Logo_48x48.png",
+                    iconSize: [40, 40]
+                });
+
+                const marker = L.marker([store.lat, store.lng], { icon: customIcon })
+                    .bindPopup(`
+                        <b>${store.name}</b><br>
+                        Regione: ${store.region}<br>
+                        <a href="${store.link}" target="_blank" class="scopri-di-piu-btn">Scopri di più</a>
+                    `)
+                    .on('click', () => trackGA4Click(store.name, store.region));
+
+                markers.addLayer(marker);
+            });
+
+            map.addLayer(markers);
+
+            // Se il sito ha gia' centrato la mappa sull'utente (URL o postMessage),
+            // non la riportiamo sulla vista "tutta Italia".
+            if (!userLocated) {
+                fitAllStores();
+            }
+        }
+
+        loadMarkers();
+
+        // Segnala al sito che la mappa e' pronta a ricevere messaggi
+        // (il listener e' gia' registrato a questo punto).
+        window.parent.postMessage({ type: "mapReady" }, PARENT_ORIGIN);
+
+        } // fine if (accessAllowed)
+    </script>
+
+</body>
+</html>
