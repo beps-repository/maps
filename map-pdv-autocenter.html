@@ -59,15 +59,22 @@
         .leaflet-overlay-pane path {
             display: none !important;
         }
-        /* Marker posizione utente (pallino blu). Si usa un divIcon e non un circleMarker
-           perche' le regole sopra nascondono tutti i path vettoriali di Leaflet. */
-        .user-location-dot {
-            width: 16px;
-            height: 16px;
-            background: #1a73e8;
-            border: 3px solid #ffffff;
-            border-radius: 50%;
-            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.35), 0 1px 4px rgba(0, 0, 0, 0.4);
+        /* Marker posizione utente: pin con solo contorno bianco sottile, senza riempimento,
+           cosi' il logo Bep's del punto vendita sotto resta visibile.
+           Il drop-shadow scuro serve a far leggere il bianco sulla mappa chiara.
+           Si usa un divIcon con SVG inline e non un circleMarker perche' le regole sopra
+           nascondono tutti i path vettoriali di Leaflet (solo nell'overlay-pane: l'SVG
+           dentro il marker-pane non e' toccato). */
+        .user-location-pin {
+            width: 24px;
+            height: 32px;
+            filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
+        }
+        .user-location-pin svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
         }
     </style>
 </head>
@@ -88,6 +95,7 @@
         //                     + filtro dei marker per codice negozio (messaggio filterMarkers)
         //                     + su mobile la mappa si muove con due dita (gesture handling),
         //                       con un dito scorre la pagina
+        //                     + posizione utente come pin bianco outline (non copre il logo del negozio)
         if (accessAllowed) {
 
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
@@ -250,9 +258,14 @@
                 userMarker = L.marker([lat, lon], {
                     icon: L.divIcon({
                         className: "",
-                        html: "<div class='user-location-dot'></div>",
-                        iconSize: [22, 22],
-                        iconAnchor: [11, 11]
+                        html: "<div class='user-location-pin'>" +
+                              "<svg viewBox='0 0 24 32' xmlns='http://www.w3.org/2000/svg'>" +
+                              "<path d='M12 31C12 31 2 19.5 2 12a10 10 0 0 1 20 0c0 7.5-10 19-10 19z' " +
+                              "fill='none' stroke='#ffffff' stroke-width='1.5' stroke-linejoin='round'/>" +
+                              "<circle cx='12' cy='12' r='3.5' fill='none' stroke='#ffffff' stroke-width='1.5'/>" +
+                              "</svg></div>",
+                        iconSize: [24, 32],
+                        iconAnchor: [12, 31]   // la punta del pin sta sulla posizione esatta
                     }),
                     interactive: false,
                     keyboard: false,
