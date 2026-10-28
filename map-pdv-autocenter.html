@@ -5,16 +5,18 @@
     <title>Mappa con Cluster</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.css" />
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet-gesture-handling@1.2.2/dist/leaflet-gesture-handling.min.js"></script>
 
     <style>
         html, body { margin: 0; height: 100%; }
-        
+
         #map {
             width: 100%;
             height: 100%;
@@ -82,8 +84,10 @@
     </script>
 
     <script>
-        // Versione 22-10-26b - centraggio mappa da parte del sito (parametri URL + postMessage)
-        //                      + filtro dei marker per codice negozio (messaggio filterMarkers)
+        // Versione 28-10-26 - centraggio mappa da parte del sito (parametri URL + postMessage)
+        //                     + filtro dei marker per codice negozio (messaggio filterMarkers)
+        //                     + su mobile la mappa si muove con due dita (gesture handling),
+        //                       con un dito scorre la pagina
         if (accessAllowed) {
 
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
@@ -115,6 +119,10 @@
         const DEFAULT_CENTER = [45.5, 10.5];
         const DEFAULT_ZOOM = 6.8;
         const DEFAULT_USER_ZOOM = 11;
+
+        // Gesture handling: true = attivo anche su desktop (Ctrl + scroll per zoomare),
+        // L.Browser.mobile = attivo solo su mobile, il desktop resta invariato.
+        const GESTURE_HANDLING = L.Browser.mobile;
 
         // Intestazione della colonna del CSV con il codice negozio (stesso valore del
         // "Codice Store" dell'attributo location in Amasty: TV1, PD, VR2...).
@@ -216,7 +224,17 @@
             }
         }
 
-        const map = L.map('map').setView(
+        const map = L.map('map', {
+            gestureHandling: GESTURE_HANDLING,
+            gestureHandlingOptions: {
+                duration: 1500,
+                text: {
+                    touch: "Usa due dita per spostare la mappa",
+                    scroll: "Usa Ctrl + scroll per zoomare la mappa",
+                    scrollMac: "Usa ⌘ + scroll per zoomare la mappa"
+                }
+            }
+        }).setView(
             hasInitial ? [initLat, initLon] : DEFAULT_CENTER,
             hasInitial ? cleanZoom(urlParams.get("zoom")) : DEFAULT_ZOOM
         );
