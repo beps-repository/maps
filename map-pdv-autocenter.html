@@ -91,11 +91,13 @@
     </script>
 
     <script>
-        // Versione 28-10-26 - centraggio mappa da parte del sito (parametri URL + postMessage)
+        // Versione 29-10-26 - centraggio mappa da parte del sito (parametri URL + postMessage)
         //                     + filtro dei marker per codice negozio (messaggio filterMarkers)
         //                     + su mobile la mappa si muove con due dita (gesture handling),
         //                       con un dito scorre la pagina
         //                     + posizione utente come pin bianco outline (non copre il logo del negozio)
+        //                     + 29-10: accetta anche il tipo "filter-markers" (nome usato dal sito)
+        //                     + 29-10: alias per i Codice Store di Amasty diversi dal foglio (BO, TO)
         if (accessAllowed) {
 
         const PROXY_URL = "https://europe-west1-server-tile-beps.cloudfunctions.net/proxyMapTilerCsv";
@@ -139,6 +141,11 @@
         // e "cod. negozio ga4" sono colonne diverse e non vanno confuse con questa.
         const CODE_COLUMN_HEADER = "cod. negozio";
 
+        // Alias: Codice Store usato in Amasty (sito) -> "cod. negozio" del foglio.
+        // Il sito manda "BO" e "TO", il foglio ha "BO1" e "TO1". Va tolto quando
+        // il programmatore allinea i codici in Amasty (BO -> BO1, TO -> TO1).
+        const CODE_ALIASES = { "BO": "BO1", "TO": "TO1" };
+
         function validCoords(lat, lon) {
             return typeof lat === "number" && typeof lon === "number" &&
                    isFinite(lat) && isFinite(lon) &&
@@ -154,6 +161,12 @@
         // Codici confrontati come stringhe, senza spazi e in maiuscolo: "tv1 " == "TV1".
         function normalizeCode(value) {
             return String(value == null ? "" : value).trim().toUpperCase();
+        }
+
+        // Codici ricevuti dal sito: normalizzati e poi passati dalla tabella degli alias.
+        function normalizeIncomingCode(value) {
+            const code = normalizeCode(value);
+            return CODE_ALIASES[code] || code;
         }
 
         // Stato: se il sito ha gia' indicato una posizione utente, il fitBounds
@@ -337,6 +350,7 @@
         //   { type: "filterMarkers", codes: ["TV1", "PD"] }                 -> mostra solo questi negozi
         //   { type: "filterMarkers", codes: null }                          -> mostra tutti i negozi
         //   (opzionale) fit: false                                          -> filtra senza spostare la mappa
+        //   "filter-markers" e' accettato come sinonimo di "filterMarkers".
         // Risposta all'invio di filterMarkers:
         //   { type: "markersFiltered", count: <marker visibili>, total: <marker totali> }
         window.addEventListener("message", (event) => {
@@ -366,11 +380,11 @@
                 fitVisibleStores();
             }
 
-            if (data.type === "filterMarkers") {
+            if (data.type === "filterMarkers" || data.type === "filter-markers") {
                 if (data.codes === null) {
                     activeFilter = null;
                 } else if (Array.isArray(data.codes)) {
-                    activeFilter = new Set(data.codes.map(normalizeCode).filter(Boolean));
+                    activeFilter = new Set(data.codes.map(normalizeIncomingCode).filter(Boolean));
                 } else {
                     console.warn("filterMarkers ignorato: 'codes' deve essere un array o null", data);
                     return;
